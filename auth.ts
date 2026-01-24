@@ -81,7 +81,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
     async jwt({ token, user, account }) {
       if (!token.sub) return token;
-      const existingUser = await getUserById(token.sub);
+      const existingUser = await getUserById(token.sub); // get user on server side
 
       if (!existingUser) return token;
 

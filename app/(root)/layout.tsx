@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
-import Header from "@/modules/home/header";
+import { Header } from "@/modules/home/header";
 import Footer from "@/modules/home/footer";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: {
     template: "VibeFlow ",
-    default: "Code Editor For Vibe Coding - VibeFlow",
+    default: "VibeFlow",
   },
 };
 export default function HomeLayout({

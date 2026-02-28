@@ -7,7 +7,13 @@ export default function Home() {
   return (
     <div className=" z-20 flex flex-col items-center justify-start min-h-screen py-2 mt-10">
       <div className="flex flex-col justify-center items-center my-5">
-        <Image src={"/hero.svg"} alt="Hero-Section" height={400} width={400} />
+        <Image
+          src={"/hero.svg"}
+          alt="Hero-Section"
+          height={400}
+          width={400}
+          className="h-auto"
+        />
 
         <h1
           className=" z-20 text-5xl mt-5 font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-r 

@@ -16,6 +16,7 @@ import { useCurrentUser } from "../hooks/use-current-user";
 
 const UserButton = () => {
   const user = useCurrentUser();
+  console.log("Current User:", user);
 
   return (
     <DropdownMenu>
@@ -23,7 +24,7 @@ const UserButton = () => {
         <div className={cn("relative rounded-full cursor-pointer")}>
           <Avatar>
             <AvatarImage src={user?.image!} alt={user?.name!} />
-            <AvatarFallback className="bg-red-500">
+            <AvatarFallback className="bg-orange-500">
               <User className="text-white" />
             </AvatarFallback>
           </Avatar>

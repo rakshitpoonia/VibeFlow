@@ -53,7 +53,7 @@ enum Templates {
   EXPRESS
   VUE
   HONO
-  ANGULAR
+  ANGULARadd
 }
 
 model Playground {

@@ -21,7 +21,11 @@ model User {
   image    String?
   accounts Account[]
   role     UserRole  @default(USER)
+  // one to many relationship with User and playground
   myPlayground Playground[]
+
+  // one to many relationship with User and StarMark
+  starredPlayground StarMark[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -53,7 +57,7 @@ enum Templates {
   EXPRESS
   VUE
   HONO
-  ANGULARadd
+  ANGULAR
 }
 
 model Playground {
@@ -63,9 +67,24 @@ model Playground {
   template   Templates  @default(REACT)
   createdAt  DateTime  @default(now())
   updatedAt  DateTime @updatedAt
+  // one to many relationship with Playground and StarMark
+  Starmark   StarMark[]
  
   userId  String
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
  
   // playground files
+}
+
+model StarMark {
+  id  String @id @default(cuid()) @map("_id")
+  userId String
+  playgroundId String
+  isMarked  Boolean
+  createdAt  DateTime  @default(now())
+  // establish parent child relationship with User and Playground
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+
+  @@unique([userId , playgroundId])
 }

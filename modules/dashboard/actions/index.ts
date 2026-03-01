@@ -61,3 +61,21 @@ export const deleteProjectById = async (id: string) => {
     console.log(error);
   }
 };
+
+export const editProjectById = async (
+  id: string,
+  data: { title: string; description: string },
+) => {
+  try {
+    await db.playground.update({
+      where: {
+        id,
+      },
+      data: data,
+    });
+    // so changes get reflected on the UI without refreshing the page
+    revalidatePath("/dashboard");
+  } catch (error) {
+    console.log(error);
+  }
+};

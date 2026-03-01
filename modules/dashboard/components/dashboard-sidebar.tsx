@@ -41,8 +41,9 @@ import Image from "next/image";
 interface PlaygroundData {
   id: string;
   name: string;
-  icon: string; // Changed to string
+  icon: string; // changed to string from icon map
   starred: boolean;
+  createdAt: string; // ISO date
 }
 
 // Map icon names (strings) to their corresponding LucideIcon components
@@ -66,9 +67,13 @@ export function DashboardSidebar({
   const [starredPlaygrounds, setStarredPlaygrounds] = useState(
     initialPlaygroundData.filter((p) => p.starred),
   );
+  // Sort by createdAt and take the top 5 most recent playgrounds
   const [recentPlaygrounds, setRecentPlaygrounds] = useState(
-    initialPlaygroundData,
+    [...initialPlaygroundData]
+      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+      .slice(0, 5),
   );
+  //const [recentPlaygrounds, setRecentPlaygrounds] = useState(initialPlaygroundData)
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-1 border-r">

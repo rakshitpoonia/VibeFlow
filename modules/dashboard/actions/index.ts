@@ -2,6 +2,7 @@
 
 import { db } from "@/lib/db";
 import { currentUser } from "@/modules/auth/actions";
+import { revalidatePath } from "next/cache";
 
 export const getAllPlaygroundForUser = async () => {
   const user = await currentUser();
@@ -42,6 +43,20 @@ export const createPlayground = async (data: {
     });
 
     return playground;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+export const deleteProjectById = async (id: string) => {
+  try {
+    await db.playground.delete({
+      where: {
+        id,
+      },
+    });
+    // so changes get reflected on the UI without refreshing the page
+    revalidatePath("/dashboard");
   } catch (error) {
     console.log(error);
   }

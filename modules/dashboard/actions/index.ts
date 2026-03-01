@@ -14,6 +14,15 @@ export const getAllPlaygroundForUser = async () => {
       },
       include: {
         user: true,
+        Starmark: {
+          // get all playgrounds from Starmark collection where userId==user.id and starMarked playgrounds
+          where: {
+            userId: user?.id!,
+          },
+          select: {
+            isMarked: true,
+          },
+        },
       },
     });
 
@@ -105,5 +114,43 @@ export const duplicateProjectById = async (id: string) => {
     return duplicatedPlayground;
   } catch (error) {
     console.error("Error duplicating project:", error);
+  }
+};
+
+export const toggleStarMarked = async (
+  playgroundId: string,
+  isChecked: boolean,
+) => {
+  const user = await currentUser();
+  const userId = user?.id;
+  if (!userId) {
+    throw new Error("User Id is Required");
+  }
+
+  try {
+    if (isChecked) {
+      await db.starMark.create({
+        data: {
+          userId: userId!,
+          playgroundId,
+          isMarked: isChecked,
+        },
+      });
+    } else {
+      await db.starMark.delete({
+        where: {
+          userId_playgroundId: {
+            userId,
+            playgroundId: playgroundId,
+          },
+        },
+      });
+    }
+
+    revalidatePath("/dashboard");
+    return { success: true, isMarked: isChecked };
+  } catch (error) {
+    console.error("Error updating problem:", error);
+    return { success: false, error: "Failed to update problem" };
   }
 };

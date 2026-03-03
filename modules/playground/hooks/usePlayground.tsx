@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 
 import type { TemplateFolder } from "../lib/path-to-json";
-import { getPlaygroundById } from "../actions";
+import { getPlaygroundById, SaveUpdatedCode } from "../actions";
 
 interface PlaygroundData {
   id: string;
@@ -76,4 +76,32 @@ export const usePlayground = (id: string): UsePlaygroundReturn => {
       setIsLoading(false);
     }
   }, [id]);
+
+  const saveTemplateData = useCallback(
+    async (data: TemplateFolder) => {
+      try {
+        await SaveUpdatedCode(id, data);
+        setTemplateData(data);
+        toast.success("Changes saved successfully");
+      } catch (error) {
+        console.error("Error saving template data:", error);
+        toast.error("Failed to save changes");
+        throw error;
+      }
+    },
+    [id],
+  );
+
+  useEffect(() => {
+    loadPlayground();
+  }, [loadPlayground]);
+
+  return {
+    playgroundData,
+    templateData,
+    isLoading,
+    error,
+    loadPlayground,
+    saveTemplateData,
+  };
 };

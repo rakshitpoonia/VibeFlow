@@ -94,7 +94,8 @@ export function TemplateFileTree({
   onRenameFile,
   onRenameFolder,
 }: TemplateFileTreeProps) {
-  const isRootFolder = data && typeof data === "object" && "folderName" in data;
+  // interfaces for type safety
+  const isRootFolder = data && typeof data === "object" && "folderName" in data; // root level must be a folder
   const [isNewFileDialogOpen, setIsNewFileDialogOpen] = React.useState(false);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] =
     React.useState(false);
@@ -114,7 +115,7 @@ export function TemplateFileTree({
         fileExtension: extension,
         content: "",
       };
-      onAddFile(newFile, "");
+      onAddFile(newFile, ""); // root folder so parent path=""
     }
     setIsNewFileDialogOpen(false);
   };
@@ -125,7 +126,7 @@ export function TemplateFileTree({
         folderName,
         items: [],
       };
-      onAddFolder(newFolder, "");
+      onAddFolder(newFolder, ""); // root folder so parent path=""
     }
     setIsNewFolderDialogOpen(false);
   };
@@ -133,6 +134,7 @@ export function TemplateFileTree({
   return (
     <Sidebar>
       <SidebarContent>
+        {/*for root folder only*/}
         <SidebarGroup>
           <SidebarGroupLabel>{title}</SidebarGroupLabel>
           <DropdownMenu>
@@ -155,6 +157,7 @@ export function TemplateFileTree({
           <SidebarGroupContent>
             <SidebarMenu>
               {isRootFolder ? (
+                // mutiple items in root folder so use map function
                 (data as TemplateFolder).items.map((child, index) => (
                   <TemplateNode
                     key={index}
@@ -172,6 +175,7 @@ export function TemplateFileTree({
                   />
                 ))
               ) : (
+                // only one file so a single render with no loop
                 <TemplateNode
                   item={data}
                   onFileSelect={onFileSelect}
@@ -207,11 +211,12 @@ export function TemplateFileTree({
   );
 }
 
+// Node of a tree can be of type TemplateFolder or TemplateFile
 interface TemplateNodeProps {
   item: TemplateItem;
   onFileSelect?: (file: TemplateFile) => void;
   selectedFile?: TemplateFile;
-  level: number;
+  level: number; // level at which the node is present in the tree, root level is 0
   path?: string;
   onAddFile?: (file: TemplateFile, parentPath: string) => void;
   onAddFolder?: (folder: TemplateFolder, parentPath: string) => void;
@@ -235,7 +240,7 @@ function TemplateNode({
   onFileSelect,
   selectedFile,
   level,
-  path = "",
+  path = "", // always points to the parent folder of the current node, for root level it will be ""
   onAddFile,
   onAddFolder,
   onDeleteFile,
@@ -243,7 +248,7 @@ function TemplateNode({
   onRenameFile,
   onRenameFolder,
 }: TemplateNodeProps) {
-  const isValidItem = item && typeof item === "object";
+  const isValidItem = item && typeof item === "object"; // basic check to ensure item is not null and is an object
   const isFolder = isValidItem && "folderName" in item;
   const [isNewFileDialogOpen, setIsNewFileDialogOpen] = React.useState(false);
   const [isNewFolderDialogOpen, setIsNewFolderDialogOpen] =
@@ -254,6 +259,7 @@ function TemplateNode({
 
   if (!isValidItem) return null;
 
+  // if tree node is file
   if (!isFolder) {
     const file = item as TemplateFile;
     const fileName = `${file.filename}.${file.fileExtension}`;
@@ -282,6 +288,7 @@ function TemplateNode({
     };
 
     return (
+      // SidebarMenu item is used for files, it will be just a simple item
       <SidebarMenuItem>
         <div className="flex items-center group">
           <SidebarMenuButton
@@ -292,7 +299,7 @@ function TemplateNode({
             <File className="h-4 w-4 mr-2 shrink-0" />
             <span>{fileName}</span>
           </SidebarMenuButton>
-
+          {/* dropdown menu for file actions like rename and delete, visible on hover */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -342,10 +349,11 @@ function TemplateNode({
         />
       </SidebarMenuItem>
     );
+    // if tree node is folder
   } else {
     const folder = item as TemplateFolder;
     const folderName = folder.folderName;
-    const currentPath = path ? "{path}/{folderName}" : folderName;
+    const currentPath = path ? `${path}/${folderName}` : folderName;
 
     const handleAddFile = () => {
       setIsNewFileDialogOpen(true);
@@ -367,7 +375,7 @@ function TemplateNode({
       onDeleteFolder?.(folder, path);
       setIsDeleteDialogOpen(false);
     };
-
+    // to create file inside current folder which is tree node
     const handleCreateFile = (filename: string, extension: string) => {
       if (onAddFile) {
         const newFile: TemplateFile = {
@@ -379,7 +387,7 @@ function TemplateNode({
       }
       setIsNewFileDialogOpen(false);
     };
-
+    // to create folder inside current folder which is tree node
     const handleCreateFolder = (folderName: string) => {
       if (onAddFolder) {
         const newFolder: TemplateFolder = {
@@ -397,6 +405,7 @@ function TemplateNode({
     };
 
     return (
+      // sidebar menu item is folder, it is rendered as collapsible component
       <SidebarMenuItem>
         <Collapsible
           open={isOpen}
@@ -456,7 +465,7 @@ function TemplateNode({
                   item={childItem}
                   onFileSelect={onFileSelect}
                   selectedFile={selectedFile}
-                  level={level + 1}
+                  level={level + 1} // it is child item of previous level so +1
                   path={currentPath}
                   onAddFile={onAddFile}
                   onAddFolder={onAddFolder}

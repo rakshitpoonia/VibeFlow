@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { usePlayground } from "@/modules/playground/hooks/usePlayground";
 import { useFileExplorer } from "@/modules/playground/hooks/useFileExplorer";
-
+import { useWebContainer } from "@/modules/webcontainers/hooks/useWebContainer";
 import {
   Tooltip,
   TooltipContent,
@@ -33,6 +33,7 @@ import {
 import { TemplateFileTree } from "@/modules/playground/components/playground-explorer";
 import { TemplateFile } from "@/modules/playground/lib/path-to-json";
 import { PlaygroundEditor } from "@/modules/playground/components/playground-editor";
+import WebContainerPreview from "@/modules/webcontainers/components/webcontainer-preview";
 
 const mainPlaygroundPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -58,6 +59,15 @@ const mainPlaygroundPage = () => {
     openFile,
     openFiles,
   } = useFileExplorer();
+
+  const {
+    serverUrl,
+    isLoading: containerLoading,
+    error: containerError,
+    instance,
+    writeFileSync,
+    // @ts-ignore
+  } = useWebContainer({ templateData });
 
   useEffect(() => {
     setPlaygroundId(id);
@@ -229,8 +239,16 @@ const mainPlaygroundPage = () => {
                       <>
                         <ResizableHandle />
                         <ResizablePanel defaultSize={50}>
-                          {/* preview area – insert your preview component here */}
-                          <div className="h-full" />
+                          {/* web container preview component here */}
+                          <WebContainerPreview
+                            templateData={templateData}
+                            instance={instance}
+                            writeFileSync={writeFileSync}
+                            isLoading={containerLoading}
+                            error={containerError}
+                            serverUrl={serverUrl!}
+                            forceResetup={false}
+                          />
                         </ResizablePanel>
                       </>
                     )}

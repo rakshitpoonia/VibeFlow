@@ -32,6 +32,7 @@ import {
 
 import { TemplateFileTree } from "@/modules/playground/components/playground-explorer";
 import { TemplateFile } from "@/modules/playground/lib/path-to-json";
+import { PlaygroundEditor } from "@/modules/playground/components/playground-editor";
 
 const mainPlaygroundPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -209,7 +210,32 @@ const mainPlaygroundPage = () => {
                     </div>
                   </Tabs>
                 </div>
-                <div className="flex-1">{activeFile?.content}</div>
+                <div className="flex-1">
+                  {/* the group is re‑keyed on visibility change so sizes reset */}
+                  <ResizablePanelGroup
+                    key={isPreviewVisible ? "with-preview" : "no-preview"}
+                    orientation="horizontal"
+                    className="h-full"
+                  >
+                    <ResizablePanel defaultSize={isPreviewVisible ? 50 : 100}>
+                      <PlaygroundEditor
+                        activeFile={activeFile}
+                        content={activeFile?.content || ""}
+                        onContentChange={() => {}}
+                      />
+                    </ResizablePanel>
+
+                    {isPreviewVisible && (
+                      <>
+                        <ResizableHandle />
+                        <ResizablePanel defaultSize={50}>
+                          {/* preview area – insert your preview component here */}
+                          <div className="h-full" />
+                        </ResizablePanel>
+                      </>
+                    )}
+                  </ResizablePanelGroup>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col h-full items-center justify-center text-muted-foreground gap-4">

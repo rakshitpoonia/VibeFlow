@@ -81,4 +81,13 @@ export const useWebContainer = ({
     },
     [instance],
   );
+  const destroy = useCallback(() => {
+    if (instance) {
+      instance.teardown();
+      setInstance(null);
+      setServerUrl(null);
+    }
+  }, [instance]);
+
+  return { serverUrl, isLoading, error, instance, writeFileSync, destroy };
 };

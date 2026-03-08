@@ -242,4 +242,52 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
       toast.error("Failed to create folder");
     }
   },
+
+  handleDeleteFile: async (file, parentPath, saveTemplateData) => {
+    const { templateData, openFiles } = get();
+    if (!templateData) return;
+
+    try {
+      const updatedTemplateData = JSON.parse(
+        JSON.stringify(templateData),
+      ) as TemplateFolder;
+      const pathParts = parentPath.split("/");
+      let currentFolder = updatedTemplateData;
+
+      for (const part of pathParts) {
+        if (part) {
+          const nextFolder = currentFolder.items.find(
+            (item) => "folderName" in item && item.folderName === part,
+          ) as TemplateFolder;
+          if (nextFolder) currentFolder = nextFolder;
+        }
+      }
+
+      currentFolder.items = currentFolder.items.filter(
+        (item) =>
+          !("filename" in item) ||
+          item.filename !== file.filename ||
+          item.fileExtension !== file.fileExtension,
+      );
+
+      // Find and close the file if it's open
+      // Use the same ID generation logic as in openFile
+      const fileId = generateFileId(file, templateData);
+      const openFile = openFiles.find((f) => f.id === fileId);
+
+      if (openFile) {
+        // Close the file using the closeFile method
+        get().closeFile(fileId);
+      }
+
+      set({ templateData: updatedTemplateData });
+
+      // Use the passed saveTemplateData function
+      await saveTemplateData(updatedTemplateData);
+      toast.success(`Deleted file: ${file.filename}.${file.fileExtension}`);
+    } catch (error) {
+      console.error("Error deleting file:", error);
+      toast.error("Failed to delete file");
+    }
+  },
 }));

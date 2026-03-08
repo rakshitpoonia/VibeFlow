@@ -197,4 +197,49 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
       toast.error("Failed to create file");
     }
   },
+
+  handleAddFolder: async (
+    newFolder,
+    parentPath,
+    instance,
+    saveTemplateData,
+  ) => {
+    const { templateData } = get();
+    if (!templateData) return;
+
+    try {
+      const updatedTemplateData = JSON.parse(
+        JSON.stringify(templateData),
+      ) as TemplateFolder;
+      const pathParts = parentPath.split("/");
+      let currentFolder = updatedTemplateData;
+
+      for (const part of pathParts) {
+        if (part) {
+          const nextFolder = currentFolder.items.find(
+            (item) => "folderName" in item && item.folderName === part,
+          ) as TemplateFolder;
+          if (nextFolder) currentFolder = nextFolder;
+        }
+      }
+
+      currentFolder.items.push(newFolder);
+      set({ templateData: updatedTemplateData });
+      toast.success(`Created folder: ${newFolder.folderName}`);
+
+      // Use the passed saveTemplateData function
+      await saveTemplateData(updatedTemplateData);
+
+      // Sync with web container
+      if (instance && instance.fs) {
+        const folderPath = parentPath
+          ? `${parentPath}/${newFolder.folderName}`
+          : newFolder.folderName;
+        await instance.fs.mkdir(folderPath, { recursive: true });
+      }
+    } catch (error) {
+      console.error("Error adding folder:", error);
+      toast.error("Failed to create folder");
+    }
+  },
 }));

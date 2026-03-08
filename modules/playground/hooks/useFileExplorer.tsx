@@ -428,4 +428,52 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
       toast.error("Failed to rename file");
     }
   },
+
+  handleRenameFolder: async (
+    folder,
+    newFolderName,
+    parentPath,
+    saveTemplateData,
+  ) => {
+    const { templateData } = get();
+    if (!templateData) return;
+
+    try {
+      const updatedTemplateData = JSON.parse(
+        JSON.stringify(templateData),
+      ) as TemplateFolder;
+      const pathParts = parentPath.split("/");
+      let currentFolder = updatedTemplateData;
+
+      for (const part of pathParts) {
+        if (part) {
+          const nextFolder = currentFolder.items.find(
+            (item) => "folderName" in item && item.folderName === part,
+          ) as TemplateFolder;
+          if (nextFolder) currentFolder = nextFolder;
+        }
+      }
+
+      const folderIndex = currentFolder.items.findIndex(
+        (item) => "folderName" in item && item.folderName === folder.folderName,
+      );
+
+      if (folderIndex !== -1) {
+        const updatedFolder = {
+          ...currentFolder.items[folderIndex],
+          folderName: newFolderName,
+        } as TemplateFolder;
+        currentFolder.items[folderIndex] = updatedFolder;
+
+        set({ templateData: updatedTemplateData });
+
+        // Use the passed saveTemplateData function
+        await saveTemplateData(updatedTemplateData);
+        toast.success(`Renamed folder to: ${newFolderName}`);
+      }
+    } catch (error) {
+      console.error("Error renaming folder:", error);
+      toast.error("Failed to rename folder");
+    }
+  },
 }));

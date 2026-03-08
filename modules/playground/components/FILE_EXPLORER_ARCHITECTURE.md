@@ -12,17 +12,17 @@ A file explorer UI is fundamentally powered by a **tree data structure**. By org
 
 A **node** is the basic building block of a tree. In a file explorer context, each node represents either:
 
-* **A file node** — contains metadata like name, extension, and content.
-* **A folder node** — contains a collection of child nodes (which can be files or folders).
+- **A file node** — contains metadata like name, extension, and content.
+- **A folder node** — contains a collection of child nodes (which can be files or folders).
 
 ### What is a Tree?
 
 A **tree** is a hierarchical data structure where:
 
-* There is a **root node** (the top-level folder).
-* Each node may have **zero or more child nodes**.
-* Each child node has exactly one **parent node** (except the root).
-* Nodes can be **nested arbitrarily deep** to represent any filesystem depth.
+- There is a **root node** (the top-level folder).
+- Each node may have **zero or more child nodes**.
+- Each child node has exactly one **parent node** (except the root).
+- Nodes can be **nested arbitrarily deep** to represent any filesystem depth.
 
 ### Visualizing the Hierarchy
 
@@ -56,9 +56,9 @@ To display the file explorer in the UI, the component must **traverse** the tree
 
 Iteration functions (like `.map()` in JavaScript) play a crucial role:
 
-* They iterate over the **children array** of a folder node.
-* For each child, they **create a corresponding UI element**.
-* This creates a one-to-one mapping between **data nodes and rendered components**.
+- They iterate over the **children array** of a folder node.
+- For each child, they **create a corresponding UI element**.
+- This creates a one-to-one mapping between **data nodes and rendered components**.
 
 ### Example Flow
 
@@ -106,8 +106,8 @@ Process node
 
 **Interfaces** are contracts that define the shape of data. They specify:
 
-* **What properties** a node must have.
-* **What type each property should be** (string, number, array, etc.).
+- **What properties** a node must have.
+- **What type each property should be** (string, number, array, etc.).
 
 ### Why Interfaces Matter
 
@@ -137,10 +137,10 @@ This **recursive type definition** automatically enables arbitrarily deep hierar
 
 In real-world development, the choice of data structure directly impacts:
 
-* **Code complexity** — A poor structure requires complex, error-prone logic. The tree structure makes recursive logic natural and elegant.
-* **Performance** — Trees allow efficient traversal and searching (compared to a flat list of all files).
-* **Scalability** — As filesystems grow, trees remain manageable. Flat structures become unwieldy.
-* **Maintainability** — Code that mirrors the problem domain (filesystem = tree) is easier to understand and modify.
+- **Code complexity** — A poor structure requires complex, error-prone logic. The tree structure makes recursive logic natural and elegant.
+- **Performance** — Trees allow efficient traversal and searching (compared to a flat list of all files).
+- **Scalability** — As filesystems grow, trees remain manageable. Flat structures become unwieldy.
+- **Maintainability** — Code that mirrors the problem domain (filesystem = tree) is easier to understand and modify.
 
 A well-chosen data structure doesn't just work—it makes the code **simpler, faster, and more intuitive**.
 
@@ -150,24 +150,13 @@ A well-chosen data structure doesn't just work—it makes the code **simpler, fa
 
 **File explorers using tree-based models are ubiquitous**:
 
-* **Operating systems** — Windows Explorer, Mac Finder, Linux file managers all use trees.
-* **IDEs** — VS Code, IntelliJ, Visual Studio all render the file/project structure as a tree.
-* **Cloud storage** — Google Drive, Dropbox, OneDrive use trees to organize files.
-* **Web applications** — Any app with hierarchical data (org charts, menus, category trees) uses this pattern.
+- **Operating systems** — Windows Explorer, Mac Finder, Linux file managers all use trees.
+- **IDEs** — VS Code, IntelliJ, Visual Studio all render the file/project structure as a tree.
+- **Cloud storage** — Google Drive, Dropbox, OneDrive use trees to organize files.
+- **Web applications** — Any app with hierarchical data (org charts, menus, category trees) uses this pattern.
 
 Understanding tree-based rendering is a **fundamental skill for modern UI development**.
 
 ---
 
-## 7. Summary: The Magic Behind File Explorers
-
-The "magic" of a file explorer comes from three elements working together:
-
-1. **A tree data structure** that represents the filesystem hierarchy.
-2. **Type-safe interfaces** that ensure Node consistency across the codebase.
-3. **Recursive rendering logic** that naturally handles unlimited nesting.
-
-Together, these create an elegant, maintainable solution that can scale from a 3-file project to a filesystem with thousands of items—all without additional complexity.
-
 **The key insight**: By modeling data truthfully (using a tree) and rendering truthfully (using recursion), the UI logic becomes beautifully simple.
-

@@ -290,4 +290,64 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
       toast.error("Failed to delete file");
     }
   },
+
+  handleDeleteFolder: async (folder, parentPath, saveTemplateData) => {
+    const { templateData } = get();
+    if (!templateData) return;
+
+    try {
+      const updatedTemplateData = JSON.parse(
+        JSON.stringify(templateData),
+      ) as TemplateFolder;
+      const pathParts = parentPath.split("/");
+      let currentFolder = updatedTemplateData;
+
+      for (const part of pathParts) {
+        if (part) {
+          const nextFolder = currentFolder.items.find(
+            (item) => "folderName" in item && item.folderName === part,
+          ) as TemplateFolder;
+          if (nextFolder) currentFolder = nextFolder;
+        }
+      }
+
+      currentFolder.items = currentFolder.items.filter(
+        (item) =>
+          !("folderName" in item) || item.folderName !== folder.folderName,
+      );
+
+      // Close all files in the deleted folder recursively
+      const closeFilesInFolder = (
+        folder: TemplateFolder,
+        currentPath: string = "",
+      ) => {
+        folder.items.forEach((item) => {
+          if ("filename" in item) {
+            // Generate the correct file ID using the same logic as openFile
+            const fileId = generateFileId(item, templateData);
+            get().closeFile(fileId);
+          } else if ("folderName" in item) {
+            const newPath = currentPath
+              ? `${currentPath}/${item.folderName}`
+              : item.folderName;
+            closeFilesInFolder(item, newPath);
+          }
+        });
+      };
+
+      closeFilesInFolder(
+        folder,
+        parentPath ? `${parentPath}/${folder.folderName}` : folder.folderName,
+      );
+
+      set({ templateData: updatedTemplateData });
+
+      // Use the passed saveTemplateData function
+      await saveTemplateData(updatedTemplateData);
+      toast.success(`Deleted folder: ${folder.folderName}`);
+    } catch (error) {
+      console.error("Error deleting folder:", error);
+      toast.error("Failed to delete folder");
+    }
+  },
 }));

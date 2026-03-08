@@ -241,7 +241,7 @@ const mainPlaygroundPage = () => {
                         <ResizablePanel defaultSize={50}>
                           {/* web container preview component here */}
                           <WebContainerPreview
-                            templateData={templateData}
+                            templateData={templateData as any}
                             instance={instance}
                             writeFileSync={writeFileSync}
                             isLoading={containerLoading}

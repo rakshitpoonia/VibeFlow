@@ -29,6 +29,48 @@ interface FileExplorerState {
   openFile: (file: TemplateFile) => void;
   closeFile: (fileId: string) => void;
   closeAllFiles: () => void;
+
+  // File explorer methods
+  handleAddFile: (
+    newFile: TemplateFile,
+    parentPath: string,
+    writeFileSync: (filePath: string, content: string) => Promise<void>,
+    instance: any,
+    saveTemplateData: (data: TemplateFolder) => Promise<void>,
+  ) => Promise<void>;
+
+  handleAddFolder: (
+    newFolder: TemplateFolder,
+    parentPath: string,
+    instance: any,
+    saveTemplateData: (data: TemplateFolder) => Promise<void>,
+  ) => Promise<void>;
+
+  handleDeleteFile: (
+    file: TemplateFile,
+    parentPath: string,
+    saveTemplateData: (data: TemplateFolder) => Promise<void>,
+  ) => Promise<void>;
+  handleDeleteFolder: (
+    folder: TemplateFolder,
+    parentPath: string,
+    saveTemplateData: (data: TemplateFolder) => Promise<void>,
+  ) => Promise<void>;
+  handleRenameFile: (
+    file: TemplateFile,
+    newFilename: string,
+    newExtension: string,
+    parentPath: string,
+    saveTemplateData: (data: TemplateFolder) => Promise<void>,
+  ) => Promise<void>;
+  handleRenameFolder: (
+    folder: TemplateFolder,
+    newFolderName: string,
+    parentPath: string,
+    saveTemplateData: (data: TemplateFolder) => Promise<void>,
+  ) => Promise<void>;
+
+  updateFileContent: (fileId: string, content: string) => void;
 }
 
 // @ts-ignore
@@ -71,6 +113,7 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
       editorContent: file.content || "",
     }));
   },
+
   closeFile: (fileId) => {
     const { openFiles, activeFileId } = get();
     const newFiles = openFiles.filter((f) => f.id !== fileId);
@@ -96,11 +139,62 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
       editorContent: newEditorContent,
     });
   },
+
   closeAllFiles: () => {
     set({
       openFiles: [],
       activeFileId: null,
       editorContent: "",
     });
+  },
+
+  handleAddFile: async (
+    newFile,
+    parentPath,
+    writeFileSync,
+    instance,
+    saveTemplateData,
+  ) => {
+    const { templateData } = get();
+    if (!templateData) return;
+
+    try {
+      const updatedTemplateData = JSON.parse(
+        JSON.stringify(templateData),
+      ) as TemplateFolder;
+      const pathParts = parentPath.split("/");
+      let currentFolder = updatedTemplateData;
+
+      for (const part of pathParts) {
+        if (part) {
+          const nextFolder = currentFolder.items.find(
+            (item) => "folderName" in item && item.folderName === part,
+          ) as TemplateFolder;
+          if (nextFolder) currentFolder = nextFolder;
+        }
+      }
+
+      currentFolder.items.push(newFile);
+      set({ templateData: updatedTemplateData });
+      toast.success(
+        `Created file: ${newFile.filename}.${newFile.fileExtension}`,
+      );
+
+      // Use the passed saveTemplateData function (save in db)
+      await saveTemplateData(updatedTemplateData);
+
+      // Sync with web container
+      if (writeFileSync) {
+        const filePath = parentPath
+          ? `${parentPath}/${newFile.filename}.${newFile.fileExtension}`
+          : `${newFile.filename}.${newFile.fileExtension}`;
+        await writeFileSync(filePath, newFile.content || "");
+      }
+
+      get().openFile(newFile);
+    } catch (error) {
+      console.error("Error adding file:", error);
+      toast.error("Failed to create file");
+    }
   },
 }));

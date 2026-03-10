@@ -478,18 +478,22 @@ export const useFileExplorer = create<FileExplorerState>((set, get) => ({
   },
 
   updateFileContent: (fileId, content) => {
-    set((state) => ({
-      openFiles: state.openFiles.map((file) =>
-        file.id === fileId
-          ? {
-              ...file,
-              content,
-              hasUnsavedChanges: content !== file.originalContent,
-            }
-          : file,
-      ),
-      editorContent:
-        fileId === state.activeFileId ? content : state.editorContent,
-    }));
+    // Defer state update to next microtask to avoid "setState during render" error
+    // This prevents conflicts when called from event handlers during React render cycles
+    queueMicrotask(() => {
+      set((state) => ({
+        openFiles: state.openFiles.map((file) =>
+          file.id === fileId
+            ? {
+                ...file,
+                content,
+                hasUnsavedChanges: content !== file.originalContent,
+              }
+            : file,
+        ),
+        editorContent:
+          fileId === state.activeFileId ? content : state.editorContent,
+      }));
+    });
   },
 }));

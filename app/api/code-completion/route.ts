@@ -108,7 +108,9 @@ function analyzeCodeContext(
 }
 
 function buildPrompt(context: CodeContext, suggestionType: string): string {
-  return `You are an expert code completion assistant. Generate a ${suggestionType} suggestion.
+  return `You are an expert code completion assistant.
+
+IMPORTANT: Respond with ONLY code. Do NOT include explanations, comments, documentation, or any text other than the code.
 
 Language: ${context.language}
 Framework: ${context.framework}
@@ -128,12 +130,11 @@ Analysis:
 - Incomplete Patterns: ${context.incompletePatterns.join(", ") || "None"}
 
 Instructions:
-1. Provide only the code that should be inserted at the cursor
-2. Maintain proper indentation and style
-3. Follow ${context.language} best practices
-4. Make the suggestion contextually appropriate
-
-Generate suggestion:`;
+1. Generate ONLY the code to insert - no text or explanation
+2. Do not use markdown backticks or code blocks
+3. Maintain proper indentation and style
+4. Keep suggestion brief (1-5 lines max)
+5. Make it contextually appropriate for ${context.language}`;
 }
 
 async function generateSuggestion(prompt: string): Promise<string> {
@@ -145,9 +146,9 @@ async function generateSuggestion(prompt: string): Promise<string> {
         model: "codellama:latest",
         prompt,
         stream: false,
-        option: {
-          temperature: 0.7,
-          max_tokens: 300,
+        options: {
+          temperature: 0.3,
+          num_predict: 100,
         },
       }),
     });
@@ -157,12 +158,48 @@ async function generateSuggestion(prompt: string): Promise<string> {
     }
 
     const data = await response.json();
-    let suggestion = data.response;
+    let suggestion = data.response.trim();
 
-    // Clean up the suggestion
+    // Clean up the suggestion - remove explanations, code blocks, extra text
+
+    // Remove markdown code blocks if present
     if (suggestion.includes("```")) {
       const codeMatch = suggestion.match(/```[\w]*\n?([\s\S]*?)```/);
       suggestion = codeMatch ? codeMatch[1].trim() : suggestion;
+    }
+
+    // Remove common explanation patterns (lines starting with //, /*, #, etc after code)
+    const lines = suggestion.split("\n");
+    let codeEndIndex = lines.length;
+
+    // Find where explanatory text starts (lines that look like explanations)
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      // Stop at explanation markers
+      if (
+        line.startsWith("This") ||
+        line.startsWith("Here") ||
+        line.startsWith("The") ||
+        line.startsWith("In") ||
+        line.startsWith("For") ||
+        line.startsWith("A ") ||
+        (i > 0 &&
+          line.length > 80 &&
+          !lines[i - 1].trim().endsWith(",") &&
+          !lines[i - 1].trim().endsWith("{") &&
+          !lines[i - 1].trim().endsWith("("))
+      ) {
+        codeEndIndex = i;
+        break;
+      }
+    }
+
+    suggestion = lines.slice(0, codeEndIndex).join("\n").trim();
+
+    // Limit to first few lines to avoid multi-line suggestions that include explanations
+    const suggestionLines = suggestion.split("\n");
+    if (suggestionLines.length > 5) {
+      suggestion = suggestionLines.slice(0, 5).join("\n").trim();
     }
 
     return suggestion;

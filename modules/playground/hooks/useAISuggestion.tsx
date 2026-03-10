@@ -92,44 +92,30 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
     });
   }, []);
 
-  const acceptSuggestion = useCallback(() => {
-    (editor: any, monaco: any) => {
-      setState((currentState) => {
-        if (
-          !currentState.suggestion ||
-          !currentState.position ||
-          !editor ||
-          !monaco
-        ) {
-          return currentState;
-        }
+  const acceptSuggestion = useCallback((editor: any, monaco: any) => {
+    setState((currentState) => {
+      if (!currentState.suggestion || !currentState.position) {
+        return currentState;
+      }
 
-        const { line, column } = currentState.position;
-        const sanitizedSuggestion = currentState.suggestion.replace(
-          /^\d+:\s*/gm,
-          "",
-        );
-        // to apply suggestion as an edit at the current cursor position
-        editor.executeEdits("", [
-          {
-            range: new monaco.Range(line, column, line, column),
-            text: sanitizedSuggestion,
-            forceMoveMarkers: true,
-          },
-        ]);
-        // to remove decoration after accepting suggestion
-        if (editor && currentState.decoration.length > 0) {
-          editor.deltaDecorations(currentState.decoration, []);
-        }
+      // Sanitize suggestion (remove line numbers/formatting)
+      const sanitizedSuggestion = currentState.suggestion.replace(
+        /^\d+:\s*/gm,
+        "",
+      );
 
-        return {
-          ...currentState,
-          suggestion: null,
-          position: null,
-          decoration: [],
-        };
-      });
-    };
+      // Remove decoration after accepting suggestion
+      if (editor && currentState.decoration.length > 0) {
+        editor.deltaDecorations(currentState.decoration, []);
+      }
+
+      return {
+        ...currentState,
+        suggestion: null,
+        position: null,
+        decoration: [],
+      };
+    });
   }, []);
   const rejectSuggestion = useCallback((editor: any) => {
     setState((currentState) => {

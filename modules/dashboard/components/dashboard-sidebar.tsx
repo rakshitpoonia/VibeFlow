@@ -198,7 +198,7 @@ export function DashboardSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <div className="flex items-center gap-3 px-4 py-3 border-t">
+        <div className="flex items-center justify-between px-4 py-3 border-t">
           <span className="text-sm font-medium text-muted-foreground">
             User Profile:
           </span>

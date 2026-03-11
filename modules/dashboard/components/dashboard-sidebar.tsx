@@ -13,7 +13,6 @@ import {
   Lightbulb,
   type LucideIcon,
   Plus,
-  Settings,
   Star,
   Terminal,
   Zap,
@@ -21,6 +20,7 @@ import {
   FlameIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import UserButton from "@/modules/auth/components/user-button";
 import {
   Sidebar,
   SidebarContent,
@@ -198,16 +198,12 @@ export function DashboardSidebar({
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild tooltip="Settings">
-              <Link href="/settings">
-                <Settings className="h-4 w-4" />
-                <span>Settings</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <div className="flex items-center gap-3 px-4 py-3 border-t">
+          <span className="text-sm font-medium text-muted-foreground">
+            User Profile:
+          </span>
+          <UserButton />
+        </div>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

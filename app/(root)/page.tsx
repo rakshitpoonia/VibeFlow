@@ -3,7 +3,14 @@ import { cn } from "@/lib/utils";
 import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-export default function Home() {
+import { auth } from "@/auth";
+import UserButton from "@/modules/auth/components/user-button";
+
+export default async function Home() {
+  const session = await auth();
+  const isSignedIn = !!session?.user;
+  const redirectUrl = isSignedIn ? "/dashboard" : "/auth/sign-in";
+
   return (
     <div className=" z-20 flex flex-col items-center justify-start min-h-screen py-2 mt-10">
       <div className="flex flex-col justify-center items-center my-5">
@@ -31,7 +38,7 @@ dark:from-amber-400 dark:via-orange-300 dark:to-orange-200
         integration. It is designed to help you write, debug, and optimize your
         code efficiently.
       </p>
-      <Link href={"/dashboard"}>
+      <Link href={redirectUrl}>
         <Button variant={"brand"} className="mb-4" size={"lg"}>
           Get Started
           <ArrowUpRight className="w-3.5 h-3.5" />

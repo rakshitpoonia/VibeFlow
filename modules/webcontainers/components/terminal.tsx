@@ -40,6 +40,8 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(
     const term = useRef<Terminal | null>(null);
     const fitAddon = useRef<FitAddon | null>(null);
     const searchAddon = useRef<SearchAddon | null>(null);
+    const messageQueue = useRef<string[]>([]);
+    const isTerminalReady = useRef(false);
     const [isConnected, setIsConnected] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
     const [showSearch, setShowSearch] = useState(false);
@@ -112,8 +114,11 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(
     // Expose methods through ref
     useImperativeHandle(ref, () => ({
       writeToTerminal: (data: string) => {
-        if (term.current) {
+        if (isTerminalReady.current && term.current) {
           term.current.write(data);
+        } else {
+          // Buffer message until terminal is ready
+          messageQueue.current.push(data);
         }
       },
       clearTerminal: () => {
@@ -330,7 +335,15 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(
       fitAddon.current = fitAddonInstance;
       searchAddon.current = searchAddonInstance;
       term.current = terminal;
-      
+      isTerminalReady.current = true;
+
+      // Flush buffered messages
+      if (messageQueue.current.length > 0) {
+        messageQueue.current.forEach((msg) => {
+          terminal.write(msg);
+        });
+        messageQueue.current = [];
+      }
 
       // Handle terminal input
       terminal.onData(handleTerminalInput);

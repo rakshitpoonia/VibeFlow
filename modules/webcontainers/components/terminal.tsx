@@ -8,10 +8,9 @@ import React, {
   forwardRef,
   useImperativeHandle,
 } from "react";
-import { Terminal } from "xterm";
-import { FitAddon } from "xterm-addon-fit";
-import { WebLinksAddon } from "xterm-addon-web-links";
-import { SearchAddon } from "xterm-addon-search";
+import type { Terminal } from "xterm";
+import type { FitAddon } from "xterm-addon-fit";
+import type { SearchAddon } from "xterm-addon-search";
 import "xterm/css/xterm.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -295,8 +294,14 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(
       [executeCommand, writePrompt],
     );
 
-    const initializeTerminal = useCallback(() => {
+    const initializeTerminal = useCallback(async () => {
       if (!terminalRef.current || term.current) return;
+
+      // Lazy load xterm only when initializing on client - prevents "self is not defined" error
+      const { Terminal } = await import("xterm");
+      const { FitAddon } = await import("xterm-addon-fit");
+      const { WebLinksAddon } = await import("xterm-addon-web-links");
+      const { SearchAddon } = await import("xterm-addon-search");
 
       const terminal = new Terminal({
         cursorBlink: true,
@@ -325,6 +330,7 @@ const TerminalComponent = forwardRef<TerminalRef, TerminalProps>(
       fitAddon.current = fitAddonInstance;
       searchAddon.current = searchAddonInstance;
       term.current = terminal;
+      
 
       // Handle terminal input
       terminal.onData(handleTerminalInput);

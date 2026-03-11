@@ -66,6 +66,7 @@ const WebContainerPreview = ({
       try {
         setIsSetupInProgress(true);
         setSetupError(null);
+        
 
         try {
           const packageJsonExists = await instance.fs.readFile(
@@ -94,6 +95,31 @@ const WebContainerPreview = ({
                 starting: false,
                 ready: true,
               }));
+              // #region agent log
+              fetch(
+                "http://127.0.0.1:7363/ingest/030331c9-65d3-4303-9129-f4057b45483c",
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "X-Debug-Session-Id": "90dd64",
+                  },
+                  body: JSON.stringify({
+                    sessionId: "90dd64",
+                    runId: "pre-fix",
+                    hypothesisId: "H2",
+                    location:
+                      "modules/webcontainers/components/webcontainer-preview.tsx:84",
+                    message: "server-ready (reconnect)",
+                    data: {
+                      previewUrl: url,
+                      currentStep,
+                    },
+                    timestamp: Date.now(),
+                  }),
+                },
+              ).catch(() => {});
+              // #endregion
             });
 
             setCurrentStep(4);
@@ -105,8 +131,56 @@ const WebContainerPreview = ({
         // Step-1 transform data
         setLoadingState((prev) => ({ ...prev, transforming: true }));
         setCurrentStep(1);
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7363/indigest/030331c9-65d3-4303-9129-f4057b45483c",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "90dd64",
+            },
+            body: JSON.stringify({
+              sessionId: "90dd64",
+              runId: "pre-fix",
+              hypothesisId: "H3",
+              location:
+                "modules/webcontainers/components/webcontainer-preview.tsx:106",
+              message: "step 1 set",
+              data: { currentStep: 1 },
+              timestamp: Date.now(),
+            }),
+          },
+        ).catch(() => {});
+        // #endregion
 
         if (terminalRef.current?.writeToTerminal) {
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7363/ingest/030331c9-65d3-4303-9129-f4057b45483c",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Debug-Session-Id": "90dd64",
+              },
+              body: JSON.stringify({
+                sessionId: "90dd64",
+                runId: "pre-fix",
+                hypothesisId: "H1",
+                location:
+                  "modules/webcontainers/components/webcontainer-preview.tsx:109",
+                message: "terminalRef before transform",
+                data: {
+                  hasTerminalRef: !!terminalRef.current,
+                  hasWriteToTerminal:
+                    !!terminalRef.current?.writeToTerminal,
+                },
+                timestamp: Date.now(),
+              }),
+            },
+          ).catch(() => {});
+          // #endregion
           terminalRef.current.writeToTerminal(
             "🔄 Transforming template data...\r\n",
           );
@@ -120,6 +194,28 @@ const WebContainerPreview = ({
           mounting: true,
         }));
         setCurrentStep(2);
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7363/ingest/030331c9-65d3-4303-9129-f4057b45483c",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "90dd64",
+            },
+            body: JSON.stringify({
+              sessionId: "90dd64",
+              runId: "pre-fix",
+              hypothesisId: "H3",
+              location:
+                "modules/webcontainers/components/webcontainer-preview.tsx:117",
+              message: "step 2 set",
+              data: { currentStep: 2 },
+              timestamp: Date.now(),
+            }),
+          },
+        ).catch(() => {});
+        // #endregion
 
         //  Step-2 Mount Files
 
@@ -141,6 +237,28 @@ const WebContainerPreview = ({
           installing: true,
         }));
         setCurrentStep(3);
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7363/ingest/030331c9-65d3-4303-9129-f4057b45483c",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "90dd64",
+            },
+            body: JSON.stringify({
+              sessionId: "90dd64",
+              runId: "pre-fix",
+              hypothesisId: "H3",
+              location:
+                "modules/webcontainers/components/webcontainer-preview.tsx:138",
+              message: "step 3 set",
+              data: { currentStep: 3 },
+              timestamp: Date.now(),
+            }),
+          },
+        ).catch(() => {});
+        // #endregion
 
         // Step-3 Install dependencies
 
@@ -181,6 +299,28 @@ const WebContainerPreview = ({
           starting: true,
         }));
         setCurrentStep(4);
+        // #region agent log
+        fetch(
+          "http://127.0.0.1:7363/ingest/030331c9-65d3-4303-9129-f4057b45483c",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Debug-Session-Id": "90dd64",
+            },
+            body: JSON.stringify({
+              sessionId: "90dd64",
+              runId: "pre-fix",
+              hypothesisId: "H3",
+              location:
+                "modules/webcontainers/components/webcontainer-preview.tsx:178",
+              message: "step 4 set",
+              data: { currentStep: 4 },
+              timestamp: Date.now(),
+            }),
+          },
+        ).catch(() => {});
+        // #endregion
 
         // STEP-4 Start The Server
 
@@ -206,6 +346,32 @@ const WebContainerPreview = ({
           }));
           setIsSetupComplete(true);
           setIsSetupInProgress(false);
+          // #region agent log
+          fetch(
+            "http://127.0.0.1:7363/ingest/030331c9-65d3-4303-9129-f4057b45483c",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "X-Debug-Session-Id": "90dd64",
+              },
+              body: JSON.stringify({
+                sessionId: "90dd64",
+                runId: "pre-fix",
+                hypothesisId: "H2",
+                location:
+                  "modules/webcontainers/components/webcontainer-preview.tsx:195",
+                message: "server-ready (cold)",
+                data: {
+                  previewUrl: url,
+                  currentStep,
+                  ready: true,
+                },
+                timestamp: Date.now(),
+              }),
+            },
+          ).catch(() => {});
+          // #endregion
         });
 
         // Handle start process output - stream to terminal

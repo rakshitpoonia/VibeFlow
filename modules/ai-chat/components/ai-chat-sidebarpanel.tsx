@@ -284,9 +284,15 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
             />
 
             {/* Side Panel - Black background */}
-            <div className="fixed right-0 top-0 h-full w-3/4 bg-black border-l border-zinc-800 z-50 flex flex-col shadow-2xl">
+            <div
+              style={{ backgroundColor: "rgb(0, 0, 0)" }}
+              className="fixed right-0 top-0 h-full w-3/4 border-l border-zinc-800 z-50 flex flex-col shadow-2xl overflow-hidden"
+            >
               {/* Enhanced Header */}
-              <div className="shrink-0 border-b border-zinc-800 bg-black">
+              <div
+                style={{ backgroundColor: "rgb(0, 0, 0)" }}
+                className="shrink-0 border-b border-zinc-800"
+              >
                 <div className="flex items-center justify-between p-6">
                   <div className="flex items-center gap-3">
                     <div className="relative w-10 h-10 border rounded-full flex flex-col justify-center items-center">
@@ -454,7 +460,10 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
               </div>
 
               {/* Messages Container */}
-              <div className="flex-1 overflow-y-auto bg-black">
+              <div
+                style={{ backgroundColor: "rgb(0, 0, 0)" }}
+                className="flex-1 overflow-y-auto"
+              >
                 <div className="p-6 space-y-6">
                   {filteredMessages.length === 0 && !isLoading && (
                     <div className="text-center text-zinc-500 py-16">
@@ -613,8 +622,9 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
 
               {/* Enhanced Input Form */}
               <form
+                style={{ backgroundColor: "rgb(0, 0, 0)" }}
                 onSubmit={handleSendMessage}
-                className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-sm"
+                className="shrink-0 p-4 border-t border-zinc-800"
               >
                 <div className="flex items-end gap-3">
                   <div className="flex-1 relative">

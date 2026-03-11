@@ -148,7 +148,7 @@ async function generateSuggestion(prompt: string): Promise<string> {
         stream: false,
         options: {
           temperature: 0.3,
-          num_predict: 100,
+          max_tokens: 100,
         },
       }),
     });

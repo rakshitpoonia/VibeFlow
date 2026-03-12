@@ -24,17 +24,17 @@
 
 ## 🧱 Tech Stack
 
-| Layer         | Technology                     |
-| ------------- | ------------------------------ |
-| Framework     | Next.js 15 (App Router)        |
-| Styling       | TailwindCSS, ShadCN UI         |
-| Language      | TypeScript                     |
-| Auth          | NextAuth (Google + GitHub)     |
-| Editor        | Monaco Editor                  |
-| AI Suggestion | Ollama (LLMs running locally)  |
-| Runtime       | WebContainers                  |
-| Terminal      | xterm.js                       |
-| Database      | MongoDB (via `DATABASE_URL`)   |
+| Layer         | Technology                    |
+| ------------- | ----------------------------- |
+| Framework     | Next.js 15 (App Router)       |
+| Styling       | TailwindCSS, ShadCN UI        |
+| Language      | TypeScript                    |
+| Auth          | NextAuth (Google + GitHub)    |
+| Editor        | Monaco Editor                 |
+| AI Suggestion | Ollama (LLMs running locally) |
+| Runtime       | WebContainers                 |
+| Terminal      | xterm.js                      |
+| Database      | MongoDB (via `DATABASE_URL`)  |
 
 ---
 
@@ -93,7 +93,7 @@ Make sure [Ollama](https://ollama.com/) is installed and at least one code-capab
 ollama run codellama
 ```
 
-Or use your preferred model that supports code generation.
+Or use your preferred model that supports code generation. (codellama:latest has been used in this project so for proper working on local host install this model)
 
 ### 5. Run the Development Server
 

@@ -26,7 +26,7 @@
 
 | Layer         | Technology                    |
 | ------------- | ----------------------------- |
-| Framework     | Next.js 15 (App Router)       |
+| Framework     | Next.js 16 (App Router)       |
 | Styling       | TailwindCSS, ShadCN UI        |
 | Language      | TypeScript                    |
 | Auth          | NextAuth (Google + GitHub)    |

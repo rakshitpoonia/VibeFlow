@@ -232,7 +232,7 @@ const mainPlaygroundPage = () => {
         }
 
         const newTemplateData = await saveTemplateData(updatedTemplateData);
-        setTemplateData(newTemplateData || updatedTemplateData);
+        setTemplateData((newTemplateData as any) || updatedTemplateData);
         // Update open files
         const updatedOpenFiles = openFiles.map((f) =>
           f.id === targetFileId

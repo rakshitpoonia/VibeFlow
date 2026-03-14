@@ -119,6 +119,19 @@ If you are interested in contributing, this would be a great feature to work on 
 
 ---
 
+## 📚 Deep Dives into Core Features
+
+If you want to understand how some of the core features are implemented under the hood, refer to these feature-specific docs:
+
+- **AI Chat Assistant internals** – `modules/ai-chat/CHAT_ASSISTANT.md`
+- **AI Code Completion (inline suggestions)** – `modules/playground/AI_SUGGESTION.md`
+- **Authentication & auth flow** – `AUTHFLOW.md`
+- **File Explorer architecture** – `modules/playground/components/FILE_EXPLORER_ARCHITECTURE.md`
+
+These documents walk through the intent, flow, and interaction between files for each feature, and are the best place to start if you want an explanation of how things work internally.
+
+---
+
 ## 🎯 Keyboard Shortcuts
 
 - `Ctrl + Space` or `Double Enter`: Trigger AI suggestions

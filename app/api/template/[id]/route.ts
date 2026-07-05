@@ -1,24 +1,10 @@
-import {
-  readTemplateStructureFromJson,
-  saveTemplateStructureToJson,
-} from "@/modules/playground/lib/path-to-json";
 import { db } from "@/lib/db";
-import { templatePaths } from "@/lib/template";
-import path from "path";
-import fs from "fs/promises";
 import { NextRequest } from "next/server";
 
-function validateJsonStructure(data: unknown): boolean {
-  try {
-    JSON.parse(JSON.stringify(data)); // Ensures it's serializable
-    return true;
-  } catch (error) {
-    console.error("Invalid JSON structure:", error);
-    return false;
-  }
-}
-
-// uses playground id to get template type and then generate template json from the starter templates folder and return it to frontend
+// uses playground id to get template type and then returns the template JSON
+// from the StarterTemplate bucket collection (seeded via POST /api/template/seed).
+// Fallback for playgrounds that have no TemplateFile row yet — new playgrounds
+// get their template copied into their account at creation time.
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -37,38 +23,30 @@ export async function GET(
     return Response.json({ error: "Playground not found" }, { status: 404 });
   }
 
-  const templateKey = playground.template as keyof typeof templatePaths;
-  const templatePath = templatePaths[templateKey];
+  const starterTemplate = await db.starterTemplate.findUnique({
+    where: { template: playground.template },
+  });
 
-  if (!templatePath) {
-    return Response.json({ error: "Invalid template" }, { status: 404 });
+  if (!starterTemplate) {
+    return Response.json(
+      {
+        error: `Template ${playground.template} is not seeded in the database. Run POST /api/template/seed from a dev machine first.`,
+      },
+      { status: 404 },
+    );
   }
 
   try {
-    const inputPath = path.join(process.cwd(), templatePath);
-    const outputFile = path.join(process.cwd(), `output/${templateKey}.json`);
-
-    await saveTemplateStructureToJson(inputPath, outputFile);
-    const result = await readTemplateStructureFromJson(outputFile);
-
-    // Validate the JSON structure before saving
-    if (!validateJsonStructure(result.items)) {
-      return Response.json(
-        { error: "Invalid JSON structure" },
-        { status: 500 },
-      );
-    }
-
-    await fs.unlink(outputFile);
+    const templateJson = JSON.parse(starterTemplate.content);
 
     return Response.json(
-      { success: true, templateJson: result },
+      { success: true, templateJson },
       { status: 200 },
     );
   } catch (error) {
-    console.error("Error generating template JSON:", error);
+    console.error("Error parsing stored template JSON:", error);
     return Response.json(
-      { error: "Failed to generate template" },
+      { error: "Stored template data is corrupted" },
       { status: 500 },
     );
   }

@@ -51,6 +51,22 @@ export const createPlayground = async (data: {
       },
     });
 
+    // copy the seeded template content from the StarterTemplate bucket into
+    // this playground's own TemplateFile row, so the first open loads from
+    // the DB instead of scanning starter folders on disk
+    const starterTemplate = await db.starterTemplate.findUnique({
+      where: { template },
+    });
+
+    if (starterTemplate) {
+      await db.templateFile.create({
+        data: {
+          playgroundId: playground.id,
+          content: starterTemplate.content,
+        },
+      });
+    }
+
     return playground;
   } catch (error) {
     console.log(error);

@@ -62,8 +62,9 @@ enum Templates {
   ANGULAR
 }
 
-// common bucket of starter template content, seeded once from the
-// vibecode-starters folders via POST /api/template/seed
+// common bucket of starter template content, one row per template.
+// createPlayground copies the matching row into a playground's own
+// TemplateFile at creation; GET /api/template/[id] reads it as a fallback.
 model StarterTemplate {
   id        String    @id @default(cuid()) @map("_id")
   template  Templates @unique

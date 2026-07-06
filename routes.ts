@@ -4,10 +4,7 @@
  * @type {string[]}
  */
 
-export const publicRoutes: string[] = [
-  "/",
-  "/api/template/seed", // dev-only seeding endpoint; guards itself (403 in production)
-];
+export const publicRoutes: string[] = ["/"];
 
 /**
  * An Array of routes that are protected

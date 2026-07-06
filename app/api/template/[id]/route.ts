@@ -2,7 +2,7 @@ import { db } from "@/lib/db";
 import { NextRequest } from "next/server";
 
 // uses playground id to get template type and then returns the template JSON
-// from the StarterTemplate bucket collection (seeded via POST /api/template/seed).
+// from the StarterTemplate bucket collection in the DB.
 // Fallback for playgrounds that have no TemplateFile row yet — new playgrounds
 // get their template copied into their account at creation time.
 export async function GET(
@@ -30,7 +30,7 @@ export async function GET(
   if (!starterTemplate) {
     return Response.json(
       {
-        error: `Template ${playground.template} is not seeded in the database. Run POST /api/template/seed from a dev machine first.`,
+        error: `Template ${playground.template} is not available in the database.`,
       },
       { status: 404 },
     );

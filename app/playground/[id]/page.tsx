@@ -511,7 +511,13 @@ const mainPlaygroundPage = () => {
                           aiSuggestions.rejectSuggestion(editor)
                         }
                         onTriggerSuggestion={(type, editor) =>
-                          aiSuggestions.fetchSuggestion(type, editor)
+                          aiSuggestions.fetchSuggestion(
+                            type,
+                            editor,
+                            activeFile
+                              ? `${activeFile.filename}.${activeFile.fileExtension}`
+                              : undefined,
+                          )
                         }
                       />
                     </ResizablePanel>

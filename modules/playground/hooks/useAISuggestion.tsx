@@ -10,7 +10,11 @@ interface AISuggestionsState {
 
 interface UseAISuggestionsReturn extends AISuggestionsState {
   toggleEnabled: () => void;
-  fetchSuggestion: (type: string, editor: any) => Promise<void>;
+  fetchSuggestion: (
+    type: string,
+    editor: any,
+    fileName?: string,
+  ) => Promise<void>;
   acceptSuggestion: (editor: any, monaco: any) => void;
   rejectSuggestion: (editor: any) => void;
   clearSuggestion: (editor: any) => void;
@@ -29,7 +33,8 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
     setState((prev) => ({ ...prev, isEnabled: !prev.isEnabled }));
   }, []);
 
-  const fetchSuggestion = useCallback(async (type: string, editor: any) => {
+  const fetchSuggestion = useCallback(
+    async (type: string, editor: any, fileName?: string) => {
     setState((currentState) => {
       if (!currentState.isEnabled) {
         return currentState;
@@ -49,11 +54,19 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
       // immediate invoked async function to fetch suggestion without blocking the state update
       (async () => {
         try {
+          // Send only a window around the cursor instead of the whole file —
+          // the API never uses more than this, and it keeps payloads small.
+          const lines: string[] = model.getValue().split("\n");
+          const cursorIndex = cursorPosition.lineNumber - 1; // 0-based
+          const windowStart = Math.max(0, cursorIndex - 60);
+          const windowEnd = Math.min(lines.length, cursorIndex + 21);
+
           const payload = {
-            fileContent: model.getValue(),
-            cursorLine: cursorPosition.lineNumber - 1,
+            fileContent: lines.slice(windowStart, windowEnd).join("\n"),
+            cursorLine: cursorIndex - windowStart,
             cursorColumn: cursorPosition.column - 1,
             suggestionType: type,
+            fileName,
           };
 
           const response = await fetch("/api/code-completion", {

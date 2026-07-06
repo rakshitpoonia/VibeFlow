@@ -2,7 +2,7 @@
 
 ![Vibecode Editor Thumbnail](public/1.png)
 
-**Vibecode Editor** is a blazing-fast, AI-integrated web IDE built entirely in the browser using **Next.js App Router**, **WebContainers**, **Monaco Editor**, and **local LLMs via Ollama**. It offers real-time code execution, an AI-powered chat assistant, and support for multiple tech stacks — all wrapped in a stunning developer-first UI.
+**Vibecode Editor** is a blazing-fast, AI-integrated web IDE built entirely in the browser using **Next.js App Router**, **WebContainers**, **Monaco Editor**, and **LLMs via OpenRouter**. It offers real-time code execution, an AI-powered chat assistant, and support for multiple tech stacks — all wrapped in a stunning developer-first UI.
 
 Demo Video Link : https://youtu.be/if4zJj9APdI
 
@@ -16,7 +16,7 @@ Demo Video Link : https://youtu.be/if4zJj9APdI
 - 🧱 **Project Templates** – Choose from React, Next.js, Express, Hono, Vue, or Angular.
 - 🗂️ **Custom File Explorer** – Create, rename, delete, and manage files/folders easily.
 - 🖊️ **Enhanced Monaco Editor** – Syntax highlighting, formatting, keybindings, and AI autocomplete.
-- 💡 **AI Suggestions with Ollama** – Local models give you code completion on `Ctrl + Space` or double `Enter`. Accept with `Tab`.
+- 💡 **AI Code Completion** – OpenRouter-hosted models give you inline code completion on `Ctrl + Space` or double `Enter`. Accept with `Tab`. Automatic model fallback keeps suggestions flowing if a model is unavailable.
 - ⚙️ **WebContainers Integration** – Instantly run frontend/backend apps right in the browser.
 - 💻 **Terminal with xterm.js** – Fully interactive embedded terminal experience.
 - 🤖 **AI Chat Assistant** – Share files with the AI and get help, refactors, or explanations.
@@ -33,22 +33,10 @@ Demo Video Link : https://youtu.be/if4zJj9APdI
 | Language      | TypeScript                    |
 | Auth          | NextAuth (Google + GitHub)    |
 | Editor        | Monaco Editor                 |
-| AI Suggestion | Ollama (LLMs running locally) |
+| AI Chat & Completion | OpenRouter (cloud LLMs)   |
 | Runtime       | WebContainers                 |
 | Terminal      | xterm.js                      |
 | Database      | MongoDB (via `DATABASE_URL`)  |
-
----
-
-## 💻 System Requirements
-
-Because this project uses **local LLMs via Ollama**, it is recommended to run it on a **high-performance system**:
-
-- **CPU/GPU**: Modern multi-core CPU, dedicated GPU strongly recommended for larger models
-- **RAM**: At least **16 GB** recommended (more for bigger models)
-- **Disk**: Sufficient space for Ollama models
-
-**Note:** Offline LLM models require a high-performance system; otherwise, responses will be **very slow** or may be **unavailable** if the model cannot be loaded into memory.
 
 ---
 
@@ -84,18 +72,13 @@ AUTH_GOOGLE_SECRET=your_google_secret
 AUTH_GITHUB_ID=your_github_client_id
 AUTH_GITHUB_SECRET=your_github_secret
 DATABASE_URL=your_mongodb_connection_string
+OPENROUTER_API_KEY=your_openrouter_api_key
 NEXTAUTH_URL=http://localhost:3000
 ```
 
-### 4. Start Local Ollama Model
+### 4. Get an OpenRouter API Key
 
-Make sure [Ollama](https://ollama.com/) is installed and at least one code-capable model is available, then run:
-
-```bash
-ollama run codellama
-```
-
-Or use your preferred model that supports code generation. (codellama:latest has been used in this project so for proper working on local host install this model)
+The AI chat assistant and inline code completion call [OpenRouter](https://openrouter.ai/). Create an account, generate an API key, and set it as `OPENROUTER_API_KEY` (locally in `.env`, and in your hosting provider's environment variables when deploying). The app uses free-tier models, so no credits are required to get started.
 
 ### 5. Run the Development Server
 
@@ -107,17 +90,13 @@ Visit `http://localhost:3000` in your browser.
 
 ---
 
-## ⚠️ Deployment / Hosting Limitations
+## ☁️ Deployment Notes
 
-Currently, this project is **not suitable for hosting in production** as-is.
+The app deploys cleanly to serverless platforms (e.g., Vercel):
 
-At startup, the playground **loads template data directly from a folder in the project’s root directory**, which works in local development but will **not work reliably in a typical production hosting environment** (e.g., serverless platforms, containerized deployments, or read-only file systems).
-
-To make this production-ready, the template data needs to be moved to a persistent data store instead of relying on local files.
-
-**Good OSS issue:** "to fix this add a collection in mongo db that stores templates and then load template data in playground using get request"
-
-If you are interested in contributing, this would be a great feature to work on and discuss in an issue/PR.
+- Starter template data lives in the **`StarterTemplate` MongoDB collection** — nothing is read from disk at runtime.
+- AI features call **OpenRouter** server-side; set `OPENROUTER_API_KEY` in your hosting provider's environment variables.
+- Register your production OAuth callback URLs (`/api/auth/callback/google` and `/api/auth/callback/github`) in the Google/GitHub developer consoles.
 
 ---
 
@@ -147,10 +126,8 @@ These documents walk through the intent, flow, and interaction between files for
 Contributions, feedback, and feature ideas are welcome!
 
 - **Bug reports / Issues** – Use GitHub Issues to report bugs or suggest improvements.
-- **Feature requests** – Open a discussion or issue to propose new functionality (e.g., template storage in MongoDB, new language templates, improved AI workflows).
+- **Feature requests** – Open a discussion or issue to propose new functionality (e.g., new language templates, improved AI workflows, streaming chat responses).
 - **Pull requests** – Fork the repo, create a feature branch, and open a PR.
-
-If you are looking for a meaningful contribution, consider tackling the **deployment limitation** by moving template data into MongoDB as described above.
 
 ---
 
@@ -163,7 +140,7 @@ This project is licensed under the [MIT License](LICENSE).
 ## 🙏 Acknowledgements
 
 - [Monaco Editor](https://microsoft.github.io/monaco-editor/)
-- [Ollama](https://ollama.com/) – for offline LLMs
+- [OpenRouter](https://openrouter.ai/) – unified LLM API
 - [WebContainers](https://webcontainers.io/)
 - [xterm.js](https://xtermjs.org/)
 - [NextAuth.js](https://next-auth.js.org/)

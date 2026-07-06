@@ -9,15 +9,15 @@ Instead of leaving the IDE or copying code into external tools, users can:
 - Request reviews, fixes, or optimizations.
 - Get explanations, suggestions, and troubleshooting help.
 
-All of this happens through a **chat sidebar** that talks to a **local AI model** running via Ollama.
+All of this happens through a **chat sidebar** that talks to **cloud-hosted models via OpenRouter** (using the Vercel AI SDK with the `@openrouter/ai-sdk-provider`).
 
 At a high level, the system works like this:
 
-1. The user types a message in the chat interface.
+1. The user types a message in the chat interface (and can pick a model from the dropdown).
 2. The message is appended to the local chat history.
-3. The frontend sends a **POST** request to the chat API route.
-4. The backend builds a prompt using the existing conversation history in a **ChatML‑style format**.
-5. The backend calls the local AI model endpoint.
+3. The frontend sends a **POST** request to the chat API route, including the selected model.
+4. The backend builds a proper **messages array** (system prompt + history + new message).
+5. The backend calls OpenRouter through the AI SDK's `generateText`.
 6. The model generates a response based on the entire conversation context.
 7. The API route returns the model’s response to the frontend.
 8. The chat panel adds the AI’s reply to the history and renders it in the UI.
@@ -38,13 +38,8 @@ Its responsibilities are:
 
 - Receive chat requests from the frontend.
 - Merge the new user message with recent chat history.
-- Build a prompt using a ChatML‑style conversation format.
-- Call the **local AI model** running at:
-
-  ```text
-  http://localhost:11434/api/generate
-  ```
-
+- Validate the requested model against the allowlist in `lib/ai/models.ts` (falling back to the default model if invalid).
+- Call **OpenRouter** via the AI SDK's `generateText`, using the provider from `lib/ai/client.ts` (authenticated with the `OPENROUTER_API_KEY` env var).
 - Cleanly return the model’s response to the frontend.
 
 In other words, this route is the **bridge between the chat UI and the AI model**.
@@ -57,6 +52,7 @@ The route expects a JSON body containing:
 - **`history`** – an array of previous chat messages, each with:
   - a `role` (`"user"` or `"assistant"`)
   - the `content` text.
+- **`model`** – the OpenRouter model id chosen in the UI dropdown (validated server-side against the supported-models allowlist).
 
 The intent here is:
 
@@ -68,57 +64,28 @@ The intent here is:
 
 If the incoming data is invalid (for example, missing or non‑string `message`), the route sends back a clear 400‑level error instead of trying to generate a response.
 
-### Using ChatML‑style conversation structure
+### Native messages-array conversation structure
 
-The actual AI call is performed by a helper function that:
+The route passes the conversation to the model as a **real messages array** — no manual prompt flattening:
 
-1. Defines a **system prompt** explaining the assistant’s role:
-   - It should behave as a helpful coding assistant.
-   - It should focus on code, debugging, best practices, and clear explanations.
-2. Combines:
-   - this **system message**, and
-   - the array of **previous user/assistant messages**,
-   into a single ordered list.
-3. Converts that list into a **ChatML‑style text format**, where each entry is represented by:
+- A concise, programming-focused **system prompt** is passed via the AI SDK's `system` option. It instructs the model to lead with the answer, use markdown code blocks, keep prose short, and maintain conversation continuity.
+- The validated **history** (last 10 user/assistant messages) plus the **new user message** are passed as the `messages` array with their proper roles.
 
-   ```text
-   role: content
-   ```
+Because roles are structural rather than text conventions:
 
-   repeated for each message and joined with spacing.
+- The model always knows who said what.
+- The assistant's behavior stays consistent across turns (the same system prompt is re-sent each time).
+- There is no `assistant:`-prefix leakage in the output.
 
-Conceptually, this is similar to ChatML:
+### Calling OpenRouter
 
-- The conversation is a list of messages with roles like:
-  - **system** – sets the overall behavior and constraints.
-  - **user** – represents user questions and requests.
-  - **assistant** – represents previous AI replies.
-- By including:
-  - the system prompt at the top, and
-  - the history below it,
-  the model receives a **full conversational context**, not just the latest question.
+Once the messages array is assembled, the route:
 
-The **motive** behind this structure is:
-
-- To help the AI understand:
-  - who is speaking,
-  - what has already been discussed,
-  - and how it should respond.
-- To keep the assistant’s behavior consistent across turns by always re‑sending the same system instructions.
-
-### Calling the local AI model
-
-Once the prompt string is built, the route:
-
-- Sends a **POST** request to `http://localhost:11434/api/generate`.
-- Specifies:
-  - the **model name** (e.g., `codellama:latest`).
-  - the **prompt** (the ChatML‑style text).
-  - generation options such as:
-    - temperature (controls randomness),
-    - maximum tokens (caps response length),
-    - and other sampling parameters.
-- Awaits the JSON response from the local model server.
+- Calls `generateText` from the **Vercel AI SDK** with:
+  - the **model** — `getOpenRouter().chat(modelId)`, where `modelId` is the client-selected model validated against the allowlist,
+  - the **system prompt** and **messages array**,
+  - generation options: temperature `0.7`, `maxOutputTokens: 1000`.
+- Awaits the completed generation (responses are returned as a single JSON payload, not streamed).
 
 The intent of these options is:
 
@@ -127,10 +94,10 @@ The intent of these options is:
   - **bounded** in length (so the UI remains responsive),
   - and **focused** on the coding task.
 
-If the model returns a valid `response` field, the route:
+When generation succeeds, the route:
 
 - Trims the text.
-- Returns it as `response` in a JSON payload, optionally with a timestamp or metadata.
+- Returns it as `response` in a JSON payload, along with the **model id** used, the **total token count**, and a timestamp.
 
 If anything goes wrong (model unreachable, unexpected data, etc.), the route:
 
@@ -150,10 +117,10 @@ Putting it all together, the backend flow looks like this:
    - filters out invalid entries from the history,
    - keeps only the last N messages,
    - appends the new user message at the end.
-4. **Prompt building**  
-   The system prompt and all messages are combined into a ChatML‑style conversation text.
+4. **Messages assembly**  
+   The system prompt, history, and new message are combined into a proper messages array.
 5. **Model call**  
-   The prompt is sent to `http://localhost:11434/api/generate`.
+   The messages are sent to OpenRouter via the AI SDK's `generateText`, using the validated model id.
 6. **Response handling**  
    The returned text is trimmed and packaged into a JSON object.
 7. **Response → Frontend**  
@@ -388,17 +355,17 @@ To summarize, here is the full lifecycle of one chat interaction:
    - collects recent history from `messages`,
    - and posts `{ message, history, ... }` to `/api/chat`.
 
-4. **The API builds a ChatML‑formatted prompt.**  
+4. **The API assembles a messages array.**  
    The backend:
+   - validates the requested model against the allowlist,
    - prepends a system prompt,
-   - merges history and the new message into a sequence,
-   - turns that sequence into a ChatML‑style text conversation.
+   - merges history and the new message into a role-tagged messages array.
 
-5. **The request is sent to the AI model endpoint.**  
-   The route calls `http://localhost:11434/api/generate` with the prompt and generation options.
+5. **The request is sent to OpenRouter.**  
+   The route calls `generateText` (Vercel AI SDK + OpenRouter provider) with the messages and generation options.
 
 6. **The model generates a response.**  
-   The local LLM uses the conversation context to produce a relevant answer.
+   The selected cloud model uses the conversation context to produce a relevant answer.
 
 7. **The API returns the response.**  
    The route packages the model’s output as `response` in a JSON payload, or an error if something went wrong.

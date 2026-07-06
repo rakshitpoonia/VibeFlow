@@ -40,6 +40,12 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import Image from "next/image";
+import {
+  DEFAULT_CHAT_MODEL,
+  MODEL_LABELS,
+  SUPPORTED_MODELS,
+  isSupportedModel,
+} from "@/lib/ai/models";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -115,7 +121,7 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
   const [filterType, setFilterType] = useState<string>("all");
   const [autoSave, setAutoSave] = useState(true);
   const [streamResponse, setStreamResponse] = useState(true);
-  const [model, setModel] = useState<string>("codellama");
+  const [model, setModel] = useState<string>(DEFAULT_CHAT_MODEL);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -195,14 +201,13 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
             role: msg.role,
             content: msg.content,
           })),
-          stream: streamResponse,
-          mode: chatMode,
           model,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
+        const responseModel: unknown = data.model;
 
         setMessages((prev) => [
           ...prev,
@@ -213,7 +218,9 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
             id: Date.now().toString(),
             type: messageType,
             tokens: data.tokens,
-            model: data.model || "AI Assistant",
+            model: isSupportedModel(responseModel)
+              ? MODEL_LABELS[responseModel]
+              : "AI Assistant",
           },
         ]);
       } else {
@@ -404,7 +411,11 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                           onChange={(e) => setModel(e.target.value)}
                           className="bg-zinc-900/60 border border-zinc-800 rounded px-2 py-1 text-zinc-200 focus:outline-none"
                         >
-                          <option value="codellama">codellama</option>
+                          {SUPPORTED_MODELS.map((id) => (
+                            <option key={id} value={id}>
+                              {MODEL_LABELS[id]}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div className="relative">
@@ -533,28 +544,36 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
                               remarkPlugins={[remarkGfm, remarkMath]}
                               rehypePlugins={[rehypeKatex]}
                               components={{
-                                code: ({
-                                  children,
-                                  className,
-                                  inline,
-                                }: any) => {
-                                  if (inline) {
+                                // react-markdown v10 no longer passes `inline`.
+                                // Fenced blocks carry a `language-*` class and are
+                                // wrapped in <pre> (styled via the `pre` override
+                                // below); everything else is inline code. Keeping
+                                // this element phrasing-only avoids nesting
+                                // <div>/<pre> inside <p>.
+                                code: ({ children, className }: any) => {
+                                  const isBlock = /language-/.test(
+                                    className || "",
+                                  );
+                                  if (isBlock) {
                                     return (
-                                      <code className="bg-zinc-800 px-1 py-0.5 rounded text-sm">
+                                      <code className={className}>
                                         {children}
                                       </code>
                                     );
                                   }
                                   return (
-                                    <div className="bg-zinc-800 rounded-lg p-4 my-4">
-                                      <pre className="text-sm text-zinc-100 overflow-x-auto">
-                                        <code className={className}>
-                                          {children}
-                                        </code>
-                                      </pre>
-                                    </div>
+                                    <code className="bg-zinc-800 px-1 py-0.5 rounded text-sm">
+                                      {children}
+                                    </code>
                                   );
                                 },
+                                pre: ({ children }: any) => (
+                                  <div className="bg-zinc-800 rounded-lg p-4 my-4">
+                                    <pre className="text-sm text-zinc-100 overflow-x-auto">
+                                      {children}
+                                    </pre>
+                                  </div>
+                                ),
                               }}
                             >
                               {msg.content.replace(/^assistant:\s*/i, "")}

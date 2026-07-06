@@ -1,4 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { generateText } from "ai";
+import { getOpenRouter } from "@/lib/ai/client";
+import { COMPLETION_MODELS } from "@/lib/ai/models";
+
+export const maxDuration = 60;
 
 interface CodeSuggestionRequest {
   fileContent: string;
@@ -10,16 +15,24 @@ interface CodeSuggestionRequest {
 
 interface CodeContext {
   language: string;
-  framework: string;
   beforeContext: string;
   currentLine: string;
   afterContext: string;
   cursorPosition: { line: number; column: number };
-  isInFunction: boolean;
-  isInClass: boolean;
-  isAfterComment: boolean;
-  incompletePatterns: string[];
 }
+
+// Ghost text is latency-sensitive: cap each model attempt so a slow model
+// falls through to the next one instead of stalling the editor.
+const PER_MODEL_TIMEOUT_MS = 10_000;
+
+const SYSTEM_PROMPT = `You are an inline code completion engine inside a code editor.
+The user's code contains a <CURSOR> marker. Output ONLY the code to insert at that marker.
+Rules:
+- Raw code only: no markdown, no backticks, no explanations, no surrounding prose.
+- Continue the current statement, or add at most 5 short lines.
+- Match the existing indentation, naming and style exactly.
+- Never repeat code that already appears before the cursor.
+- If there is nothing useful to insert, output nothing.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,24 +56,31 @@ export async function POST(request: NextRequest) {
       fileName,
     );
 
-    const prompt = buildPrompt(context, suggestionType);
+    const prompt = buildPrompt(context, fileName);
 
     const suggestion = await generateSuggestion(prompt);
+
+    if (suggestion === null) {
+      return NextResponse.json(
+        { error: "AI completion is currently unavailable" },
+        { status: 502 },
+      );
+    }
 
     return NextResponse.json({
       suggestion,
       context,
       metadata: {
         language: context.language,
-        framework: context.framework,
         position: context.cursorPosition,
         generatedAt: new Date().toISOString(),
       },
     });
-  } catch (error: any) {
-    console.error("Context analysis error:", error);
+  } catch (error) {
+    console.error("Code completion error:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Internal server error", message: error.message },
+      { error: "Internal server error", message },
       { status: 500 },
     );
   }
@@ -75,141 +95,102 @@ function analyzeCodeContext(
   const lines = content.split("\n");
   const currentLine = lines[line] || "";
 
-  // Get surrounding context (10 lines before and after)
-  const contextRadius = 10;
-  const startLine = Math.max(0, line - contextRadius);
-  const endLine = Math.min(lines.length, line + contextRadius);
+  // Asymmetric window: completions depend mostly on what precedes the
+  // cursor, so send more lines before it than after.
+  const beforeRadius = 25;
+  const afterRadius = 8;
+  const startLine = Math.max(0, line - beforeRadius);
+  const endLine = Math.min(lines.length, line + 1 + afterRadius);
 
   const beforeContext = lines.slice(startLine, line).join("\n");
   const afterContext = lines.slice(line + 1, endLine).join("\n");
 
-  // Detect language and framework
   const language = detectLanguage(content, fileName);
-  const framework = detectFramework(content);
-
-  // Analyze code patterns
-  const isInFunction = detectInFunction(lines, line);
-  const isInClass = detectInClass(lines, line);
-  const isAfterComment = detectAfterComment(currentLine, column);
-  const incompletePatterns = detectIncompletePatterns(currentLine, column);
 
   return {
     language,
-    framework,
     beforeContext,
     currentLine,
     afterContext,
     cursorPosition: { line, column },
-    isInFunction,
-    isInClass,
-    isAfterComment,
-    incompletePatterns,
   };
 }
 
-function buildPrompt(context: CodeContext, suggestionType: string): string {
-  return `You are an expert code completion assistant.
+function buildPrompt(context: CodeContext, fileName?: string): string {
+  const { beforeContext, currentLine, afterContext, cursorPosition } = context;
 
-IMPORTANT: Respond with ONLY code. Do NOT include explanations, comments, documentation, or any text other than the code.
+  const markedLine =
+    currentLine.substring(0, cursorPosition.column) +
+    "<CURSOR>" +
+    currentLine.substring(cursorPosition.column);
 
-Language: ${context.language}
-Framework: ${context.framework}
+  const code = [beforeContext, markedLine, afterContext]
+    .filter((part) => part.length > 0)
+    .join("\n");
 
-Context:
-${context.beforeContext}
-${context.currentLine.substring(
-  0,
-  context.cursorPosition.column,
-)}|CURSOR|${context.currentLine.substring(context.cursorPosition.column)}
-${context.afterContext}
+  return `Language: ${context.language}${fileName ? `\nFile: ${fileName}` : ""}
 
-Analysis:
-- In Function: ${context.isInFunction}
-- In Class: ${context.isInClass}
-- After Comment: ${context.isAfterComment}
-- Incomplete Patterns: ${context.incompletePatterns.join(", ") || "None"}
-
-Instructions:
-1. Generate ONLY the code to insert - no text or explanation
-2. Do not use markdown backticks or code blocks
-3. Maintain proper indentation and style
-4. Keep suggestion brief (1-5 lines max)
-5. Make it contextually appropriate for ${context.language}`;
+${code}`;
 }
 
-async function generateSuggestion(prompt: string): Promise<string> {
-  try {
-    const response = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "codellama:latest",
+/**
+ * Tries each completion model in order (best to worst for inline
+ * completion). Falls back to the next model on error, timeout or empty
+ * output; the caller — and the frontend — never see which model answered.
+ * Returns null only when every model failed.
+ */
+async function generateSuggestion(prompt: string): Promise<string | null> {
+  const openrouter = getOpenRouter();
+
+  for (const modelId of COMPLETION_MODELS) {
+    try {
+      const result = await generateText({
+        // These are hybrid reasoning models; reasoning must stay off here or
+        // deliberation text leaks into the completion and latency balloons.
+        model: openrouter.chat(modelId, {
+          reasoning: { enabled: false, effort: "none" },
+        }),
+        system: SYSTEM_PROMPT,
         prompt,
-        stream: false,
-        options: {
-          temperature: 0.3,
-          max_tokens: 100,
-        },
-      }),
-    });
+        temperature: 0.2,
+        maxOutputTokens: 150,
+        abortSignal: AbortSignal.timeout(PER_MODEL_TIMEOUT_MS),
+      });
 
-    if (!response.ok) {
-      throw new Error(`AI service error: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    let suggestion = data.response.trim();
-
-    // Clean up the suggestion - remove explanations, code blocks, extra text
-
-    // Remove markdown code blocks if present
-    if (suggestion.includes("```")) {
-      const codeMatch = suggestion.match(/```[\w]*\n?([\s\S]*?)```/);
-      suggestion = codeMatch ? codeMatch[1].trim() : suggestion;
-    }
-
-    // Remove common explanation patterns (lines starting with //, /*, #, etc after code)
-    const lines = suggestion.split("\n");
-    let codeEndIndex = lines.length;
-
-    // Find where explanatory text starts (lines that look like explanations)
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      // Stop at explanation markers
-      if (
-        line.startsWith("This") ||
-        line.startsWith("Here") ||
-        line.startsWith("The") ||
-        line.startsWith("In") ||
-        line.startsWith("For") ||
-        line.startsWith("A ") ||
-        (i > 0 &&
-          line.length > 80 &&
-          !lines[i - 1].trim().endsWith(",") &&
-          !lines[i - 1].trim().endsWith("{") &&
-          !lines[i - 1].trim().endsWith("("))
-      ) {
-        codeEndIndex = i;
-        break;
+      const suggestion = sanitizeSuggestion(result.text);
+      if (suggestion) {
+        return suggestion;
       }
+    } catch (error) {
+      console.warn(`Completion model ${modelId} failed, falling back:`, error);
     }
-
-    suggestion = lines.slice(0, codeEndIndex).join("\n").trim();
-
-    // Limit to first few lines to avoid multi-line suggestions that include explanations
-    const suggestionLines = suggestion.split("\n");
-    if (suggestionLines.length > 5) {
-      suggestion = suggestionLines.slice(0, 5).join("\n").trim();
-    }
-
-    return suggestion;
-  } catch (error) {
-    console.error("AI generation error:", error);
-    return "// AI suggestion unavailable";
   }
+
+  return null;
 }
 
-// Helper functions for code analysis
+function sanitizeSuggestion(raw: string): string {
+  let suggestion = raw.trim();
+
+  // Strip markdown code fences if the model ignored instructions
+  if (suggestion.includes("```")) {
+    const codeMatch = suggestion.match(/```[\w]*\n?([\s\S]*?)```/);
+    suggestion = codeMatch ? codeMatch[1] : suggestion.replace(/```[\w]*/g, "");
+    suggestion = suggestion.trim();
+  }
+
+  // Drop any echoed cursor marker
+  suggestion = suggestion.replace(/<CURSOR>/g, "");
+
+  // Keep ghost text short: cap at 5 lines
+  const lines = suggestion.split("\n");
+  if (lines.length > 5) {
+    suggestion = lines.slice(0, 5).join("\n").trimEnd();
+  }
+
+  return suggestion;
+}
+
 function detectLanguage(content: string, fileName?: string): string {
   if (fileName) {
     const ext = fileName.split(".").pop()?.toLowerCase();
@@ -223,67 +204,19 @@ function detectLanguage(content: string, fileName?: string): string {
       go: "Go",
       rs: "Rust",
       php: "PHP",
+      css: "CSS",
+      html: "HTML",
+      json: "JSON",
+      vue: "Vue",
     };
     if (ext && extMap[ext]) return extMap[ext];
   }
 
-  // Content-based detection
+  // Content-based detection (fallback when no fileName is provided)
   if (content.includes("interface ") || content.includes(": string"))
     return "TypeScript";
-  if (content.includes("def ") || content.includes("import ")) return "Python";
+  if (/^\s*def\s+\w+\s*\(/m.test(content)) return "Python";
   if (content.includes("func ") || content.includes("package ")) return "Go";
 
   return "JavaScript";
-}
-
-function detectFramework(content: string): string {
-  if (content.includes("import React") || content.includes("useState"))
-    return "React";
-  if (content.includes("import Vue") || content.includes("<template>"))
-    return "Vue";
-  if (content.includes("@angular/") || content.includes("@Component"))
-    return "Angular";
-  if (content.includes("next/") || content.includes("getServerSideProps"))
-    return "Next.js";
-
-  return "None";
-}
-
-function detectInFunction(lines: string[], currentLine: number): boolean {
-  for (let i = currentLine - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (line?.match(/^\s*(function|def|const\s+\w+\s*=|let\s+\w+\s*=)/))
-      return true;
-    if (line?.match(/^\s*}/)) break;
-  }
-  return false;
-}
-
-function detectInClass(lines: string[], currentLine: number): boolean {
-  for (let i = currentLine - 1; i >= 0; i--) {
-    const line = lines[i];
-    if (line?.match(/^\s*(class|interface)\s+/)) return true;
-  }
-  return false;
-}
-
-function detectAfterComment(line: string, column: number): boolean {
-  const beforeCursor = line.substring(0, column);
-  return /\/\/.*$/.test(beforeCursor) || /#.*$/.test(beforeCursor);
-}
-
-function detectIncompletePatterns(line: string, column: number): string[] {
-  const beforeCursor = line.substring(0, column);
-  const patterns: string[] = [];
-
-  if (/^\s*(if|while|for)\s*\($/.test(beforeCursor.trim()))
-    patterns.push("conditional");
-  if (/^\s*(function|def)\s*$/.test(beforeCursor.trim()))
-    patterns.push("function");
-  if (/\{\s*$/.test(beforeCursor)) patterns.push("object");
-  if (/\[\s*$/.test(beforeCursor)) patterns.push("array");
-  if (/=\s*$/.test(beforeCursor)) patterns.push("assignment");
-  if (/\.\s*$/.test(beforeCursor)) patterns.push("method-call");
-
-  return patterns;
 }

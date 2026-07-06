@@ -336,7 +336,7 @@ The API route at `app/api/code-completion/route.ts` is the **backend endpoint** 
 - Receives POST requests from the frontend with editor context.
 - Analyzes and structures this context.
 - Builds a prompt tailored for code completion.
-- Sends the prompt to a **local LLM** (via Ollama’s HTTP API).
+- Sends the prompt to **OpenRouter** (via the Vercel AI SDK), trying a ranked list of models with **automatic fallback**.
 - Returns the generated completion back to the frontend in a clean form.
 
 This layer **isolates model communication** from frontend logic so that:
@@ -357,30 +357,26 @@ When the frontend calls `/api/code-completion`:
 2. The route validates that the required fields are present and well‑formed.
 3. It calls an internal **context analysis function** that:
    - Splits the file into lines.
-   - Extracts:
-     - A set of lines **before** the cursor (within a certain radius).
+   - Extracts an asymmetric window:
+     - More lines **before** the cursor (completions depend mostly on preceding code).
      - The **current line**.
-     - A set of lines **after** the cursor.
-   - Detects likely **language and framework** from content and file extension.
-   - Performs lightweight structural analysis:
-     - Whether the cursor is inside a function or class.
-     - Whether the cursor is after a comment.
-     - Whether there are incomplete patterns like open braces or unfinished conditions.
-4. Using this analysis, the route builds a **prompt string** that:
-   - Describes the language and framework.
-   - Embeds the extracted context with a marker showing the exact cursor position.
-   - Provides clear instructions to the model:
-     - Only output code.
-     - Do not include explanations or markdown.
-     - Keep the suggestion short and well‑formatted.
-5. It then calls a **local LLM endpoint** (for example, an Ollama `generate` API) with:
-   - The prompt.
-   - Model name (e.g., `codellama:latest`).
-   - Generation settings like temperature and maximum tokens.
-6. When the model responds:
+     - A few lines **after** the cursor.
+   - Detects the likely **language** from the file extension (or content as a fallback).
+4. Using this analysis, the route builds a compact prompt that:
+   - States the language and file name.
+   - Embeds the extracted context with a `<CURSOR>` marker showing the exact cursor position.
+   - Uses a strict system prompt instructing the model to:
+     - Only output raw code — no markdown, backticks, or explanations.
+     - Keep the suggestion short (at most 5 lines).
+     - Match existing indentation and style.
+5. It then calls **OpenRouter** through the AI SDK's `generateText`, walking the model list in `lib/ai/models.ts` (`COMPLETION_MODELS`, ordered best-to-worst for inline completion):
+   - Each model attempt has a **per-model timeout** so a slow model doesn't stall the editor.
+   - On error, timeout, or empty output, the route **falls back to the next model automatically** — the frontend never knows a retry happened.
+   - Generation settings: low temperature (`0.2`) and a small output-token cap keep completions fast and stable.
+6. When a model responds:
    - The route cleans the response:
      - Strips out code fences if the model accidentally adds them.
-     - Trims trailing explanatory text or comments that don’t belong to the completion.
+     - Removes any echoed `<CURSOR>` markers.
      - Caps the suggestion to a small number of lines to keep it focused.
 7. Finally, it returns a JSON response containing:
    - The cleaned `suggestion` string.
@@ -408,13 +404,14 @@ To tie everything together, here is the overall system in simple steps:
      - The current cursor line and column.
    - It calls `fetchSuggestion()` from `useAISuggestions`, passing along the editor context.
 4. `fetchSuggestion()`:
-   - Builds a payload with the content, cursor position, and suggestion type.
+   - Slices a window of lines around the cursor (rather than sending the whole file).
+   - Builds a payload with that content, the window-relative cursor position, the suggestion type, and the active file name.
    - Sends a **POST** request to `/api/code-completion`.
 5. The **API route**:
    - Validates the payload.
    - Analyzes code context around the cursor.
    - Builds a specialized prompt for the LLM.
-   - Calls the **local AI model**.
+   - Calls **OpenRouter**, falling back through the ranked model list until one succeeds.
    - Cleans the model’s response into a concise code snippet.
    - Returns that snippet as `suggestion`.
 6. The hook receives the response:

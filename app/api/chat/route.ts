@@ -1,6 +1,9 @@
-import { db } from "@/lib/db";
-import { error } from "console";
 import { NextRequest, NextResponse } from "next/server";
+import { generateText } from "ai";
+import { getOpenRouter } from "@/lib/ai/client";
+import { DEFAULT_CHAT_MODEL, isSupportedModel } from "@/lib/ai/models";
+
+export const maxDuration = 60;
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -9,60 +12,21 @@ interface ChatMessage {
 
 interface ChatRequest {
   message: string;
-  history: ChatMessage[];
+  history?: ChatMessage[];
+  model?: string;
 }
 
-async function generateAIResponse(messages: ChatMessage[]): Promise<string> {
-  const systemPrompt = `You are a helpful AI coding assistant. You help developers with:
-- Code explanations and debugging
-- Best practices and architecture advice  
-- Writing clean, efficient code
-- Troubleshooting errors
-- Code reviews and optimizations
-
-Always provide clear, practical answers. Use proper code formatting when showing examples.`;
-
-  const fullMessages = [{ role: "system", content: systemPrompt }, ...messages];
-
-  const prompt = fullMessages
-    .map((msg) => `${msg.role}: ${msg.content}`)
-    .join("\n\n");
-
-  try {
-    const response = await fetch("http://localhost:11434/api/generate", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "codellama:latest",
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: 0.7, // Controls randomness (0-1)
-          max_tokens: 1000, // Maximum response length
-          top_p: 0.9, // controls diversity
-        },
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!data.response) {
-      throw new Error("No response from AI model");
-    }
-
-    return data.response.trim();
-  } catch (error) {
-    console.error("AI generation error:", error);
-    throw new Error("Failed to generate AI response");
-  }
-}
+const SYSTEM_PROMPT = `You are a concise AI programming assistant inside a web IDE.
+- Lead with the answer or the code; skip preamble and filler.
+- Use markdown code blocks with language tags for all code.
+- Keep prose short and practical; explain only what the user needs to act.
+- Maintain continuity with the conversation history when it is relevant.
+- If a request is ambiguous, state your assumption in one line and proceed.`;
 
 export async function POST(req: NextRequest) {
   try {
     const body: ChatRequest = await req.json();
-    const { message, history = [] } = body;
+    const { message, history = [], model } = body;
 
     // Validate input
     if (!message || typeof message !== "string") {
@@ -86,17 +50,25 @@ export async function POST(req: NextRequest) {
 
     const recentHistory = validHistory.slice(-10);
 
-    const messages: ChatMessage[] = [
-      ...recentHistory,
-      { role: "user", content: message },
-    ];
+    // Only allowlisted models may hit the OpenRouter account
+    const modelId = isSupportedModel(model) ? model : DEFAULT_CHAT_MODEL;
 
-    //   Generate ai response
-
-    const aiResponse = await generateAIResponse(messages);
+    const result = await generateText({
+      // Reasoning off: these hybrid models otherwise leak deliberation text
+      // into the reply and multiply response latency.
+      model: getOpenRouter().chat(modelId, {
+        reasoning: { enabled: false, effort: "none" },
+      }),
+      system: SYSTEM_PROMPT,
+      messages: [...recentHistory, { role: "user", content: message }],
+      temperature: 0.7,
+      maxOutputTokens: 1000,
+    });
 
     return NextResponse.json({
-      response: aiResponse,
+      response: result.text.trim(),
+      model: modelId,
+      tokens: result.usage?.totalTokens,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

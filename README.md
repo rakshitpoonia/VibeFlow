@@ -4,7 +4,7 @@
 
 **Vibecode Editor** is a blazing-fast, AI-integrated web IDE built entirely in the browser using **Next.js App Router**, **WebContainers**, **Monaco Editor**, and **LLMs via OpenRouter**. It offers real-time code execution, an AI-powered chat assistant, and support for multiple tech stacks — all wrapped in a stunning developer-first UI.
 
-Demo Video Link : https://youtu.be/if4zJj9APdI
+Demo Video Link : https://vibe-flow-two.vercel.app/
 
 ---
 
@@ -26,17 +26,17 @@ Demo Video Link : https://youtu.be/if4zJj9APdI
 
 ## 🧱 Tech Stack
 
-| Layer         | Technology                    |
-| ------------- | ----------------------------- |
-| Framework     | Next.js 16 (App Router)       |
-| Styling       | TailwindCSS, ShadCN UI        |
-| Language      | TypeScript                    |
-| Auth          | NextAuth (Google + GitHub)    |
-| Editor        | Monaco Editor                 |
-| AI Chat & Completion | OpenRouter (cloud LLMs)   |
-| Runtime       | WebContainers                 |
-| Terminal      | xterm.js                      |
-| Database      | MongoDB (via `DATABASE_URL`)  |
+| Layer                | Technology                   |
+| -------------------- | ---------------------------- |
+| Framework            | Next.js 16 (App Router)      |
+| Styling              | TailwindCSS, ShadCN UI       |
+| Language             | TypeScript                   |
+| Auth                 | NextAuth (Google + GitHub)   |
+| Editor               | Monaco Editor                |
+| AI Chat & Completion | OpenRouter (cloud LLMs)      |
+| Runtime              | WebContainers                |
+| Terminal             | xterm.js                     |
+| Database             | MongoDB (via `DATABASE_URL`) |
 
 ---
 
@@ -45,8 +45,8 @@ Demo Video Link : https://youtu.be/if4zJj9APdI
 ### 1. Clone the Repo
 
 ```bash
-git clone https://github.com/your-username/vibecode-editor.git
-cd vibecode-editor
+git clone https://github.com/rakshitpoonia/VibeFlow.git
+cd VibeFlow
 ```
 
 ### 2. Install Dependencies
@@ -57,11 +57,7 @@ npm install
 
 ### 3. Set Up Environment Variables
 
-Create a `.env.local` file using the template:
-
-```bash
-cp .env.example .env.local
-```
+Create a `.env` file using the template:
 
 Then, fill in your credentials:
 
@@ -78,7 +74,7 @@ NEXTAUTH_URL=http://localhost:3000
 
 ### 4. Get an OpenRouter API Key
 
-The AI chat assistant and inline code completion call [OpenRouter](https://openrouter.ai/). Create an account, generate an API key, and set it as `OPENROUTER_API_KEY` (locally in `.env`, and in your hosting provider's environment variables when deploying). The app uses free-tier models, so no credits are required to get started.
+The AI chat assistant and inline code completion call [OpenRouter](https://openrouter.ai/). Create an account, generate an API key, and set it as `OPENROUTER_API_KEY` (locally in `.env`, and in your hosting provider's environment variables when deploying). This project uses free-tier models, so no credits are required to get started.
 
 ### 5. Run the Development Server
 
@@ -94,9 +90,11 @@ Visit `http://localhost:3000` in your browser.
 
 The app deploys cleanly to serverless platforms (e.g., Vercel):
 
-- Starter template data lives in the **`StarterTemplate` MongoDB collection** — nothing is read from disk at runtime.
+- Starter template data lives in the **`StarterTemplate` MongoDB collection**. POST request made to this row once and all subsequent template environment creations are done by GET request to this collection
 - AI features call **OpenRouter** server-side; set `OPENROUTER_API_KEY` in your hosting provider's environment variables.
 - Register your production OAuth callback URLs (`/api/auth/callback/google` and `/api/auth/callback/github`) in the Google/GitHub developer consoles.
+
+- This project uses free tier shared models so Rate Limits are quite frequent. The NVIDIA models used are fast and low latency. The choice for these models have been made on the basis of least frequency of rate limits.
 
 ---
 
@@ -117,7 +115,6 @@ These documents walk through the intent, flow, and interaction between files for
 
 - `Ctrl + Space` or `Double Enter`: Trigger AI suggestions
 - `Tab`: Accept AI suggestion
-- `/`: Open Command Palette (if implemented)
 
 ---
 

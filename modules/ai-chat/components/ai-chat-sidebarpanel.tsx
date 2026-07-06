@@ -224,11 +224,15 @@ export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
           },
         ]);
       } else {
+        // The API returns a user-facing `message` for handled cases such as
+        // rate limiting (HTTP 429); fall back to a generic apology otherwise.
+        const data = await response.json().catch(() => null);
         setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
             content:
+              data?.message ||
               "Sorry, I encountered an error while processing your request. Please try again.",
             timestamp: new Date(),
             id: Date.now().toString(),

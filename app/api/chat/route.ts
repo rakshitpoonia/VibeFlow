@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
 import { getOpenRouter } from "@/lib/ai/client";
 import { DEFAULT_CHAT_MODEL, isSupportedModel } from "@/lib/ai/models";
+import { isRateLimitError, RATE_LIMIT_CHAT_MESSAGE } from "@/lib/ai/errors";
 
 export const maxDuration = 60;
 
@@ -73,6 +74,18 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Chat API Error:", error);
+
+    // Free models share a daily quota; surface a clear, retryable notice.
+    if (isRateLimitError(error)) {
+      return NextResponse.json(
+        {
+          error: "rate_limited",
+          message: RATE_LIMIT_CHAT_MESSAGE,
+          timestamp: new Date().toISOString(),
+        },
+        { status: 429 },
+      );
+    }
 
     const errorMessage =
       error instanceof Error ? error.message : "Unknown error";

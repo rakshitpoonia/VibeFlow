@@ -2,6 +2,11 @@ import { type NextRequest, NextResponse } from "next/server";
 import { generateText } from "ai";
 import { getOpenRouter } from "@/lib/ai/client";
 import { COMPLETION_MODELS } from "@/lib/ai/models";
+import {
+  isRateLimitError,
+  RATE_LIMIT_COMPLETION_MESSAGE,
+  toCommentLine,
+} from "@/lib/ai/errors";
 
 export const maxDuration = 60;
 
@@ -58,9 +63,26 @@ export async function POST(request: NextRequest) {
 
     const prompt = buildPrompt(context, fileName);
 
-    const suggestion = await generateSuggestion(prompt);
+    const { text, rateLimited } = await generateSuggestion(prompt);
 
-    if (suggestion === null) {
+    // On rate limit, show the notice as a language-appropriate comment in
+    // ghost text (harmless if accepted with Tab) instead of a hard error.
+    if (text === null && rateLimited) {
+      return NextResponse.json({
+        suggestion: toCommentLine(
+          RATE_LIMIT_COMPLETION_MESSAGE,
+          context.language,
+        ),
+        context,
+        metadata: {
+          language: context.language,
+          position: context.cursorPosition,
+          generatedAt: new Date().toISOString(),
+        },
+      });
+    }
+
+    if (text === null) {
       return NextResponse.json(
         { error: "AI completion is currently unavailable" },
         { status: 502 },
@@ -68,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      suggestion,
+      suggestion: text,
       context,
       metadata: {
         language: context.language,
@@ -137,10 +159,14 @@ ${code}`;
  * Tries each completion model in order (best to worst for inline
  * completion). Falls back to the next model on error, timeout or empty
  * output; the caller — and the frontend — never see which model answered.
- * Returns null only when every model failed.
+ * `text` is null only when every model failed; `rateLimited` is true when
+ * that failure was (at least partly) an HTTP 429 quota error.
  */
-async function generateSuggestion(prompt: string): Promise<string | null> {
+async function generateSuggestion(
+  prompt: string,
+): Promise<{ text: string | null; rateLimited: boolean }> {
   const openrouter = getOpenRouter();
+  let rateLimited = false;
 
   for (const modelId of COMPLETION_MODELS) {
     try {
@@ -154,19 +180,26 @@ async function generateSuggestion(prompt: string): Promise<string | null> {
         prompt,
         temperature: 0.2,
         maxOutputTokens: 150,
+        // No per-model retries: we already fall back across models, so fail
+        // fast instead of retrying (which stalls the editor and, on a 429,
+        // burns the shared free quota even harder).
+        maxRetries: 0,
         abortSignal: AbortSignal.timeout(PER_MODEL_TIMEOUT_MS),
       });
 
       const suggestion = sanitizeSuggestion(result.text);
       if (suggestion) {
-        return suggestion;
+        return { text: suggestion, rateLimited: false };
       }
     } catch (error) {
+      if (isRateLimitError(error)) {
+        rateLimited = true;
+      }
       console.warn(`Completion model ${modelId} failed, falling back:`, error);
     }
   }
 
-  return null;
+  return { text: null, rateLimited };
 }
 
 function sanitizeSuggestion(raw: string): string {

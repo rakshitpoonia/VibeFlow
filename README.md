@@ -4,7 +4,7 @@
 
 **Vibecode Editor** is a blazing-fast, AI-integrated web IDE built entirely in the browser using **Next.js App Router**, **WebContainers**, **Monaco Editor**, and **LLMs via OpenRouter**. It offers real-time code execution, an AI-powered chat assistant, and support for multiple tech stacks — all wrapped in a stunning developer-first UI.
 
-Demo Video Link : https://vibe-flow-two.vercel.app/
+Live Hosted Link : https://vibe-flow-two.vercel.app/
 
 ---
 
